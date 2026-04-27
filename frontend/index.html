@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AquaWatch — Satellite Water Pollution Monitor</title>
+  <meta name="description" content="Real-time water pollution detection using Sentinel-2 satellite imagery and Google Earth Engine." />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- App Styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     HEADER / NAV
+════════════════════════════════════════════════════════════════════════════ -->
+<header class="header" role="banner">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">🛰️</span>
+      <span class="brand-name">AquaWatch</span>
+      <span class="brand-tagline">Satellite Water Monitor</span>
+    </div>
+    <nav class="tab-nav" role="navigation" aria-label="Main navigation">
+      <button class="tab-btn active" data-tab="map"      aria-selected="true"  role="tab"><i class="fa-solid fa-map" aria-hidden="true"></i> Map</button>
+      <button class="tab-btn"        data-tab="analysis" aria-selected="false" role="tab"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Analysis</button>
+      <button class="tab-btn"        data-tab="alerts"   aria-selected="false" role="tab"><i class="fa-solid fa-bell" aria-hidden="true"></i> Alerts <span id="alert-badge" class="badge hidden" aria-live="polite"></span></button>
+      <button class="tab-btn"        data-tab="about"    aria-selected="false" role="tab"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> About</button>
+    </nav>
+    <div class="header-status">
+      <span id="api-status-dot" class="status-dot" aria-hidden="true"></span>
+      <span id="api-status-text" class="status-text">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════════════════════════════════════ -->
+<main class="main-content" role="main">
+
+  <!-- ── TAB: MAP ─────────────────────────────────────────────────────────── -->
+  <section id="tab-map" class="tab-panel active" role="tabpanel" aria-label="Map view">
+    <div class="map-layout">
+
+      <!-- Sidebar -->
+      <aside class="map-sidebar" aria-label="Map controls">
+        <div class="sidebar-section">
+          <h2 class="sidebar-title"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i> Select Location</h2>
+          <p class="sidebar-hint">Click on the map or enter coordinates below.</p>
+          <div class="coord-inputs">
+            <label for="input-lat">Latitude</label>
+            <input id="input-lat" type="number" step="0.0001" placeholder="e.g. 28.6139" aria-label="Latitude" />
+            <label for="input-lng">Longitude</label>
+            <input id="input-lng" type="number" step="0.0001" placeholder="e.g. 77.2090" aria-label="Longitude" />
+          </div>
+          <button id="btn-analyze" class="btn btn-primary" aria-label="Analyze selected location">
+            <i class="fa-solid fa-satellite-dish" aria-hidden="true"></i> Analyze Location
+          </button>
+        </div>
+
+        <div class="sidebar-section">
+          <h2 class="sidebar-title"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Map Layers</h2>
+          <div class="layer-toggles" role="group" aria-label="Map layer toggles">
+            <label class="toggle-label">
+              <input type="checkbox" id="layer-rgb"       checked aria-label="True colour layer" />
+              <span class="toggle-track"></span>
+              <span>True Colour (RGB)</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="layer-ndwi"      checked aria-label="NDWI water index layer" />
+              <span class="toggle-track"></span>
+              <span>NDWI (Water Index)</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="layer-pollution"       aria-label="Pollution overlay layer" />
+              <span class="toggle-track"></span>
+              <span>Pollution Overlay</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h2 class="sidebar-title"><i class="fa-solid fa-bookmark" aria-hidden="true"></i> Quick Locations</h2>
+          <div class="quick-locations" role="list">
+            <button class="quick-loc-btn" data-lat="28.6139" data-lng="77.2090" role="listitem">🇮🇳 Yamuna, Delhi</button>
+            <button class="quick-loc-btn" data-lat="22.5726" data-lng="88.3639" role="listitem">🇮🇳 Hooghly, Kolkata</button>
+            <button class="quick-loc-btn" data-lat="51.5074" data-lng="-0.1278" role="listitem">🇬🇧 Thames, London</button>
+            <button class="quick-loc-btn" data-lat="40.7128" data-lng="-74.0060" role="listitem">🇺🇸 Hudson, New York</button>
+            <button class="quick-loc-btn" data-lat="30.0444" data-lng="31.2357" role="listitem">🇪🇬 Nile, Cairo</button>
+            <button class="quick-loc-btn" data-lat="-33.8688" data-lng="151.2093" role="listitem">🇦🇺 Parramatta, Sydney</button>
+          </div>
+        </div>
+
+        <!-- Result card (hidden until analysis runs) -->
+        <div id="result-card" class="result-card hidden" aria-live="polite" aria-label="Analysis result">
+          <div class="result-header">
+            <span id="result-label" class="result-label"></span>
+            <span id="result-score" class="result-score"></span>
+          </div>
+          <div class="result-indices">
+            <div class="index-item">
+              <span class="index-name">NDWI</span>
+              <span id="val-ndwi" class="index-val">—</span>
+            </div>
+            <div class="index-item">
+              <span class="index-name">NDTI</span>
+              <span id="val-ndti" class="index-val">—</span>
+            </div>
+            <div class="index-item">
+              <span class="index-name">FAI</span>
+              <span id="val-fai" class="index-val">—</span>
+            </div>
+          </div>
+          <div id="result-factors" class="result-factors"></div>
+          <div class="result-meta">
+            <span id="result-images" class="meta-item"></span>
+            <span id="result-dates"  class="meta-item"></span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Map container -->
+      <div class="map-container">
+        <div id="map" aria-label="Interactive satellite map"></div>
+
+        <!-- ── Floating Search Bar ── -->
+        <div class="map-search-bar" role="search" aria-label="Search for a location or water body">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
+            <input
+              id="search-input"
+              type="search"
+              class="search-input"
+              placeholder="Search river, lake, city… e.g. Amazon River"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Search location or water body"
+              aria-autocomplete="list"
+              aria-controls="search-results"
+              aria-expanded="false"
+            />
+            <button id="search-clear" class="search-clear hidden" aria-label="Clear search">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+            <div id="search-spinner" class="search-spinner hidden" aria-hidden="true"></div>
+          </div>
+          <!-- Dropdown results -->
+          <ul id="search-results" class="search-results hidden" role="listbox" aria-label="Search results"></ul>
+        </div>
+
+        <div id="map-loading" class="map-loading hidden" aria-live="polite" role="status">
+          <div class="spinner" aria-hidden="true"></div>
+          <span>Fetching satellite data…</span>
+        </div>
+        <!-- Legend -->
+        <div class="map-legend" aria-label="Map legend">
+          <div class="legend-title">Water Quality</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#27ae60"></span>Safe</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#f39c12"></span>Moderate</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#e74c3c"></span>Polluted</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB: ANALYSIS ────────────────────────────────────────────────────── -->
+  <section id="tab-analysis" class="tab-panel" role="tabpanel" aria-label="Time-series analysis">
+    <div class="analysis-layout">
+      <div class="analysis-header">
+        <h2><i class="fa-solid fa-chart-area" aria-hidden="true"></i> Time-Series Analysis</h2>
+        <p>Historical water quality trends for the selected location using Sentinel-2 data.</p>
+        <div class="analysis-controls">
+          <label for="months-select">History window:</label>
+          <select id="months-select" aria-label="Select history window">
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12" selected>12 months</option>
+            <option value="24">24 months</option>
+          </select>
+          <button id="btn-timeseries" class="btn btn-primary">
+            <i class="fa-solid fa-rotate" aria-hidden="true"></i> Load Time-Series
+          </button>
+        </div>
+      </div>
+
+      <div id="analysis-loading" class="loading-overlay hidden" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <span>Computing time-series from satellite archive…</span>
+      </div>
+
+      <div id="analysis-content" class="analysis-content hidden">
+        <!-- Summary cards -->
+        <div class="summary-cards" role="list">
+          <div class="summary-card" role="listitem">
+            <div class="summary-icon" aria-hidden="true">📈</div>
+            <div class="summary-label">Trend</div>
+            <div id="ts-trend" class="summary-value">—</div>
+          </div>
+          <div class="summary-card" role="listitem">
+            <div class="summary-icon" aria-hidden="true">📅</div>
+            <div class="summary-label">Data Points</div>
+            <div id="ts-points" class="summary-value">—</div>
+          </div>
+          <div class="summary-card" role="listitem">
+            <div class="summary-icon" aria-hidden="true">💧</div>
+            <div class="summary-label">Avg NDWI</div>
+            <div id="ts-avg-ndwi" class="summary-value">—</div>
+          </div>
+          <div class="summary-card" role="listitem">
+            <div class="summary-icon" aria-hidden="true">🌊</div>
+            <div class="summary-label">Latest Status</div>
+            <div id="ts-latest-status" class="summary-value">—</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>NDWI Over Time <span class="chart-hint">(higher = cleaner water)</span></h3>
+            <div id="chart-ndwi" class="chart-container" aria-label="NDWI time series chart"></div>
+          </div>
+          <div class="chart-card">
+            <h3>Turbidity (NDTI) Over Time <span class="chart-hint">(lower = cleaner)</span></h3>
+            <div id="chart-ndti" class="chart-container" aria-label="NDTI time series chart"></div>
+          </div>
+          <div class="chart-card chart-card-wide">
+            <h3>Pollution Score Over Time</h3>
+            <div id="chart-score" class="chart-container" aria-label="Pollution score time series chart"></div>
+          </div>
+          <div class="chart-card chart-card-wide">
+            <h3>Monthly Classification</h3>
+            <div id="chart-classification" class="chart-container" aria-label="Monthly classification chart"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="analysis-empty" class="empty-state">
+        <div class="empty-icon" aria-hidden="true">🛰️</div>
+        <p>Select a location on the Map tab and click <strong>Load Time-Series</strong> to view historical data.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB: ALERTS ──────────────────────────────────────────────────────── -->
+  <section id="tab-alerts" class="tab-panel" role="tabpanel" aria-label="Pollution alerts">
+    <div class="alerts-layout">
+      <div class="alerts-header">
+        <h2><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Pollution Alerts</h2>
+        <p>Real-time alert assessment for the selected location.</p>
+        <button id="btn-check-alerts" class="btn btn-primary">
+          <i class="fa-solid fa-bell" aria-hidden="true"></i> Check Alerts
+        </button>
+      </div>
+
+      <div id="alerts-loading" class="loading-overlay hidden" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <span>Checking pollution levels…</span>
+      </div>
+
+      <div id="alert-banner" class="alert-banner hidden" role="alert" aria-live="assertive"></div>
+
+      <div id="alerts-content" class="alerts-content hidden">
+        <div class="alert-detail-grid">
+          <div class="alert-detail-card">
+            <h3>Current Status</h3>
+            <div id="alert-status-display" class="alert-status-display"></div>
+          </div>
+          <div class="alert-detail-card">
+            <h3>Contributing Factors</h3>
+            <ul id="alert-factors-list" class="alert-factors-list" aria-label="Contributing pollution factors"></ul>
+          </div>
+          <div class="alert-detail-card alert-detail-card-wide">
+            <h3>Recommendations</h3>
+            <ul id="alert-recommendations" class="alert-recommendations" aria-label="Recommended actions"></ul>
+          </div>
+        </div>
+        <div class="alert-indices-row">
+          <div class="alert-index-card">
+            <div class="ai-label">NDWI</div>
+            <div id="alert-ndwi" class="ai-value">—</div>
+            <div class="ai-desc">Water Index</div>
+          </div>
+          <div class="alert-index-card">
+            <div class="ai-label">NDTI</div>
+            <div id="alert-ndti" class="ai-value">—</div>
+            <div class="ai-desc">Turbidity Index</div>
+          </div>
+          <div class="alert-index-card">
+            <div class="ai-label">FAI</div>
+            <div id="alert-fai" class="ai-value">—</div>
+            <div class="ai-desc">Algae Index</div>
+          </div>
+          <div class="alert-index-card">
+            <div class="ai-label">Score</div>
+            <div id="alert-score-val" class="ai-value">—</div>
+            <div class="ai-desc">Pollution Score</div>
+          </div>
+        </div>
+        <p id="alert-timestamp" class="alert-timestamp"></p>
+      </div>
+
+      <div id="alerts-empty" class="empty-state">
+        <div class="empty-icon" aria-hidden="true">🔔</div>
+        <p>Select a location on the Map tab and click <strong>Check Alerts</strong> to assess pollution levels.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB: ABOUT ───────────────────────────────────────────────────────── -->
+  <section id="tab-about" class="tab-panel" role="tabpanel" aria-label="About AquaWatch">
+    <div class="about-layout">
+      <div class="about-hero">
+        <div class="about-hero-icon" aria-hidden="true">🛰️</div>
+        <h1>AquaWatch</h1>
+        <p class="about-subtitle">Satellite-powered water pollution detection for a healthier planet.</p>
+      </div>
+
+      <div class="about-grid">
+        <div class="about-card">
+          <h3><i class="fa-solid fa-satellite" aria-hidden="true"></i> Data Source</h3>
+          <p>Uses <strong>Sentinel-2 MSI</strong> imagery (10 m resolution) from the European Space Agency, accessed via <strong>Google Earth Engine</strong>. Data is updated every 5 days globally.</p>
+        </div>
+        <div class="about-card">
+          <h3><i class="fa-solid fa-flask" aria-hidden="true"></i> Methodology</h3>
+          <ul>
+            <li><strong>NDWI</strong> — Normalised Difference Water Index (McFeeters 1996): detects water presence and clarity.</li>
+            <li><strong>NDTI</strong> — Normalised Difference Turbidity Index: measures suspended sediment and turbidity.</li>
+            <li><strong>FAI</strong> — Floating Algae Index: detects algal blooms and surface scum.</li>
+          </ul>
+        </div>
+        <div class="about-card">
+          <h3><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Classification</h3>
+          <div class="classification-table">
+            <div class="ct-row ct-header">
+              <span>Status</span><span>Score</span><span>Meaning</span>
+            </div>
+            <div class="ct-row">
+              <span class="badge-safe">Safe</span><span>0–19</span><span>Normal water quality</span>
+            </div>
+            <div class="ct-row">
+              <span class="badge-moderate">Moderate</span><span>20–49</span><span>Elevated concern</span>
+            </div>
+            <div class="ct-row">
+              <span class="badge-polluted">Polluted</span><span>50+</span><span>Significant pollution</span>
+            </div>
+          </div>
+        </div>
+        <div class="about-card">
+          <h3><i class="fa-solid fa-code" aria-hidden="true"></i> Tech Stack</h3>
+          <ul>
+            <li>Frontend: HTML5, CSS3, JavaScript, Leaflet.js, Plotly.js — deployed on <strong>Vercel</strong></li>
+            <li>Backend: Python, FastAPI, Google Earth Engine API — deployed on <strong>Render</strong></li>
+            <li>Imagery: Sentinel-2 SR via <strong>Google Earth Engine</strong></li>
+          </ul>
+        </div>
+        <div class="about-card about-card-wide">
+          <h3><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Disclaimer</h3>
+          <p>AquaWatch provides indicative water quality assessments based on remote sensing indices. Results should be validated with in-situ measurements before making public health or regulatory decisions. Cloud cover, atmospheric conditions, and seasonal variation can affect accuracy.</p>
+        </div>
+      </div>
+
+      <div class="about-api">
+        <h3>API Endpoints</h3>
+        <div class="api-table">
+          <div class="api-row api-header"><span>Endpoint</span><span>Description</span></div>
+          <div class="api-row"><code>GET /analyze?lat=&amp;lng=</code><span>Analyse water quality at a point</span></div>
+          <div class="api-row"><code>GET /timeseries?lat=&amp;lng=&amp;months=</code><span>Monthly historical time-series</span></div>
+          <div class="api-row"><code>GET /alerts?lat=&amp;lng=</code><span>Current alert level + recommendations</span></div>
+          <div class="api-row"><code>GET /health</code><span>API health check</span></div>
+        </div>
+        <p class="api-base-url">Base URL: <code id="api-base-display"></code></p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     TOAST NOTIFICATIONS
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════════════════════════════ -->
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Plotly JS -->
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<!-- App JS -->
+<script src="app.js"></script>
+
+</body>
+</html>
