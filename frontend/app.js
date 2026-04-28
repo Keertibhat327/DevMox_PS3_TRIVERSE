@@ -14,7 +14,7 @@
 // During local development, set to http://localhost:8000
 const API_BASE_URL =
   window.AQUAWATCH_API_URL ||
-  "https://aquawatch-api.onrender.com"; // ← update after Render deploy
+  "http://localhost:8000"; // ← backend running locally with GEE
 
 // ─── Demo / Mock Data ─────────────────────────────────────────────────────────
 // Used automatically when the backend is offline.
