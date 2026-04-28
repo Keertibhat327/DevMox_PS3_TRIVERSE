@@ -33,6 +33,7 @@
       <button class="tab-btn"        data-tab="analysis" aria-selected="false" role="tab"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Analysis</button>
       <button class="tab-btn"        data-tab="alerts"   aria-selected="false" role="tab"><i class="fa-solid fa-bell" aria-hidden="true"></i> Alerts <span id="alert-badge" class="badge hidden" aria-live="polite"></span></button>
       <button class="tab-btn"        data-tab="about"    aria-selected="false" role="tab"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> About</button>
+      <button class="tab-btn"        data-tab="compare"  aria-selected="false" role="tab"><i class="fa-solid fa-code-compare" aria-hidden="true"></i> Compare</button>
     </nav>
     <div class="header-status">
       <span id="api-status-dot" class="status-dot" aria-hidden="true"></span>
@@ -88,14 +89,20 @@
         </div>
 
         <div class="sidebar-section">
-          <h2 class="sidebar-title"><i class="fa-solid fa-bookmark" aria-hidden="true"></i> Quick Locations</h2>
+          <h2 class="sidebar-title"><i class="fa-solid fa-bookmark" aria-hidden="true"></i> Quick Locations <span class="sidebar-hint-inline">— click to analyze</span></h2>
           <div class="quick-locations" role="list">
-            <button class="quick-loc-btn" data-lat="28.6139" data-lng="77.2090" role="listitem">🇮🇳 Yamuna, Delhi</button>
-            <button class="quick-loc-btn" data-lat="22.5726" data-lng="88.3639" role="listitem">🇮🇳 Hooghly, Kolkata</button>
-            <button class="quick-loc-btn" data-lat="51.5074" data-lng="-0.1278" role="listitem">🇬🇧 Thames, London</button>
-            <button class="quick-loc-btn" data-lat="40.7128" data-lng="-74.0060" role="listitem">🇺🇸 Hudson, New York</button>
-            <button class="quick-loc-btn" data-lat="30.0444" data-lng="31.2357" role="listitem">🇪🇬 Nile, Cairo</button>
-            <button class="quick-loc-btn" data-lat="-33.8688" data-lng="151.2093" role="listitem">🇦🇺 Parramatta, Sydney</button>
+            <button class="quick-loc-btn" data-lat="28.6139"  data-lng="77.2090"   data-name="Yamuna, Delhi"        role="listitem">🇮🇳 Yamuna, Delhi</button>
+            <button class="quick-loc-btn" data-lat="22.5726"  data-lng="88.3639"   data-name="Hooghly, Kolkata"     role="listitem">🇮🇳 Hooghly, Kolkata</button>
+            <button class="quick-loc-btn" data-lat="19.0760"  data-lng="72.8777"   data-name="Mithi River, Mumbai"  role="listitem">🇮🇳 Mithi River, Mumbai</button>
+            <button class="quick-loc-btn" data-lat="51.5074"  data-lng="-0.1278"   data-name="Thames, London"       role="listitem">🇬🇧 Thames, London</button>
+            <button class="quick-loc-btn" data-lat="40.7128"  data-lng="-74.0060"  data-name="Hudson, New York"     role="listitem">🇺🇸 Hudson, New York</button>
+            <button class="quick-loc-btn" data-lat="30.0444"  data-lng="31.2357"   data-name="Nile, Cairo"          role="listitem">🇪🇬 Nile, Cairo</button>
+            <button class="quick-loc-btn" data-lat="-33.8688" data-lng="151.2093"  data-name="Parramatta, Sydney"   role="listitem">🇦🇺 Parramatta, Sydney</button>
+            <button class="quick-loc-btn" data-lat="35.6762"  data-lng="139.6503"  data-name="Tokyo Bay"            role="listitem">🇯🇵 Tokyo Bay</button>
+            <button class="quick-loc-btn" data-lat="-23.5505" data-lng="-46.6333"  data-name="Tietê River, São Paulo" role="listitem">🇧🇷 Tietê, São Paulo</button>
+            <button class="quick-loc-btn" data-lat="31.2304"  data-lng="121.4737"  data-name="Huangpu River, Shanghai" role="listitem">🇨🇳 Huangpu, Shanghai</button>
+            <button class="quick-loc-btn" data-lat="48.8566"  data-lng="2.3522"    data-name="Seine, Paris"         role="listitem">🇫🇷 Seine, Paris</button>
+            <button class="quick-loc-btn" data-lat="-3.4653"  data-lng="-62.2159"  data-name="Amazon River"         role="listitem">🌿 Amazon River</button>
           </div>
         </div>
 
@@ -103,7 +110,14 @@
         <div id="result-card" class="result-card hidden" aria-live="polite" aria-label="Analysis result">
           <div class="result-header">
             <span id="result-label" class="result-label"></span>
-            <span id="result-score" class="result-score"></span>
+            <!-- Animated gauge -->
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 80 50" aria-hidden="true">
+                <path class="gauge-bg"    d="M10,45 A30,30 0 0,1 70,45" fill="none" stroke-width="7" stroke-linecap="round"/>
+                <path id="gauge-arc"      d="M10,45 A30,30 0 0,1 70,45" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 94"/>
+              </svg>
+              <span id="result-score" class="result-score"></span>
+            </div>
           </div>
           <div class="result-indices">
             <div class="index-item">
@@ -124,6 +138,25 @@
             <span id="result-images" class="meta-item"></span>
             <span id="result-dates"  class="meta-item"></span>
           </div>
+          <!-- Action buttons -->
+          <div class="result-actions">
+            <button id="btn-export" class="btn btn-secondary btn-sm" title="Export analysis report">
+              <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Export
+            </button>
+            <button id="btn-compare-set" class="btn btn-secondary btn-sm" title="Set as comparison point A or B">
+              <i class="fa-solid fa-code-compare" aria-hidden="true"></i> Compare
+            </button>
+          </div>
+        </div>
+
+        <!-- History panel -->
+        <div class="sidebar-section" id="history-section" style="display:none">
+          <h2 class="sidebar-title"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> History
+            <button id="btn-clear-history" class="btn-icon-sm" title="Clear history" aria-label="Clear history">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </h2>
+          <div id="history-list" class="history-list"></div>
         </div>
       </aside>
 
@@ -383,6 +416,30 @@
 
 </main>
 
+<!-- Compare Modal overlay -->
+<div id="compare-modal" class="compare-modal hidden" role="dialog" aria-modal="true" aria-label="Compare locations">
+  <div class="compare-modal-inner">
+    <div class="compare-modal-header">
+      <h2><i class="fa-solid fa-code-compare"></i> Compare Water Quality</h2>
+      <button id="compare-modal-close" class="btn-icon" aria-label="Close compare">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="compare-slots">
+      <div class="compare-slot" id="slot-a">
+        <div class="slot-label">Location A</div>
+        <div class="slot-empty">No location set.<br>Run an analysis then click <strong>Compare</strong>.</div>
+      </div>
+      <div class="compare-vs">VS</div>
+      <div class="compare-slot" id="slot-b">
+        <div class="slot-label">Location B</div>
+        <div class="slot-empty">No location set.<br>Navigate to a second location and click <strong>Compare</strong>.</div>
+      </div>
+    </div>
+    <div id="compare-winner" class="compare-winner hidden"></div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════════════════
      TOAST NOTIFICATIONS
 ════════════════════════════════════════════════════════════════════════════ -->
@@ -396,7 +453,7 @@
 <!-- Plotly JS -->
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <!-- App JS -->
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 
 </body>
 </html>

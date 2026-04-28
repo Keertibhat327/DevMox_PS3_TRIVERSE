@@ -426,21 +426,11 @@ function updateLayerBadges() {
 dom.layerRgb.addEventListener("change", () => {
   overlayState.rgb = dom.layerRgb.checked;
   syncOverlays();
-  showToast("info",
-    dom.layerRgb.checked ? "True Colour ON" : "True Colour OFF",
-    dom.layerRgb.checked ? "Satellite imagery at full opacity" : "Basemap dimmed",
-    2000
-  );
 });
 
 dom.layerNdwi.addEventListener("change", () => {
   overlayState.ndwi = dom.layerNdwi.checked;
   syncOverlays();
-  showToast("info",
-    dom.layerNdwi.checked ? "NDWI Overlay ON" : "NDWI Overlay OFF",
-    dom.layerNdwi.checked ? "Water body highlight layer active" : "Water highlight removed",
-    2000
-  );
 });
 
 dom.layerPollution.addEventListener("change", () => {
@@ -448,15 +438,7 @@ dom.layerPollution.addEventListener("change", () => {
   syncOverlays();
   if (dom.layerPollution.checked && !state.lastAnalysis) {
     showToast("warning", "No Analysis Yet",
-      "Run an analysis first to see the pollution overlay for a specific location.", 3500);
-  } else {
-    showToast("info",
-      dom.layerPollution.checked ? "Pollution Overlay ON" : "Pollution Overlay OFF",
-      dom.layerPollution.checked
-        ? (state.layers.pollution ? "GEE pollution layer active" : "Demo zone overlay active")
-        : "Pollution overlay removed",
-      2000
-    );
+      "Run an analysis first to see the pollution overlay.", 3000);
   }
 });
 
@@ -943,15 +925,6 @@ async function checkApiHealth() {
   } catch {
     dom.apiStatusDot.className    = "status-dot offline";
     dom.apiStatusText.textContent = "Demo Mode";
-    // Only show the toast once (first time we detect offline)
-    if (_apiWasOnline !== false) {
-      showToast(
-        "info",
-        "Running in Demo Mode",
-        "Backend not connected — simulated data will be used. Deploy the backend for real satellite analysis.",
-        8000
-      );
-    }
     _apiWasOnline = false;
   }
 }
@@ -974,16 +947,18 @@ function showToast(type, title, message, duration = 5000) {
       <div class="toast-title">${escapeHtml(title)}</div>
       ${message ? `<div class="toast-message">${escapeHtml(message)}</div>` : ""}
     </div>
-    <button class="toast-close" aria-label="Dismiss notification">✕</button>
+    <button class="toast-close" aria-label="Dismiss notification" type="button">✕</button>
   `;
 
-  const closeBtn = toast.querySelector(".toast-close");
+  // Dismiss: immediately hide then remove — no animation dependency
   const dismiss = () => {
-    toast.classList.add("toast-exit");
-    toast.addEventListener("animationend", () => toast.remove(), { once: true });
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(110%)";
+    toast.style.transition = "opacity 200ms ease, transform 200ms ease";
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 220);
   };
 
-  closeBtn.addEventListener("click", dismiss);
+  toast.querySelector(".toast-close").addEventListener("click", dismiss);
   if (duration > 0) setTimeout(dismiss, duration);
 
   dom.toastContainer.appendChild(toast);
@@ -1158,7 +1133,7 @@ function selectSearchResult(result) {
     map.setView([lat, lng], zoom);
   }
 
-  showToast("info", `📍 ${name}`, `Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)} — click Analyze to inspect`, 4000);
+  showToast("info", `📍 ${name}`, `Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)} — click Analyze to inspect`, 3000);
 }
 
 function showSearchResults() {
@@ -1252,14 +1227,4 @@ if (dom.apiBaseDisplay) {
 
   // Invalidate map size after fonts/layout settle
   setTimeout(() => map.invalidateSize(), 300);
-
-  // Show welcome toast
-  setTimeout(() => {
-    showToast(
-      "info",
-      "Welcome to AquaWatch",
-      "Click on the map or use Quick Locations to select a water body, then click Analyze.",
-      8000
-    );
-  }, 1000);
 })();
