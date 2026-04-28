@@ -601,6 +601,16 @@ def alerts(
                 "value":     round(idx["ndti"], 4),
                 "threshold": 0.1,
                 "severity":  "High",
+                "detail":    f"NDTI of {round(idx['ndti'],4)} indicates significant suspended sediment or turbid water. Normal clean water is typically below 0.05.",
+            })
+        elif idx["ndti"] > 0.0:
+            triggered.append({
+                "type":      "Moderate Turbidity",
+                "index":     "NDTI",
+                "value":     round(idx["ndti"], 4),
+                "threshold": 0.0,
+                "severity":  "Medium",
+                "detail":    f"NDTI of {round(idx['ndti'],4)} suggests moderate turbidity. Monitor for worsening trend.",
             })
         if idx["fai"] > 0.02:
             triggered.append({
@@ -609,38 +619,65 @@ def alerts(
                 "value":     round(idx["fai"], 6),
                 "threshold": 0.02,
                 "severity":  "High",
+                "detail":    f"FAI of {round(idx['fai'],6)} indicates floating algae or surface scum. Values above 0.02 suggest active bloom conditions.",
+            })
+        elif idx["fai"] > 0.005:
+            triggered.append({
+                "type":      "Possible Algal Activity",
+                "index":     "FAI",
+                "value":     round(idx["fai"], 6),
+                "threshold": 0.005,
+                "severity":  "Low",
+                "detail":    f"FAI of {round(idx['fai'],6)} suggests early-stage algal activity. Watch for bloom development.",
             })
         if idx["ndwi"] < 0.1:
             triggered.append({
-                "type":      "Low Water Clarity",
+                "type":      "Very Low Water Clarity",
                 "index":     "NDWI",
                 "value":     round(idx["ndwi"], 4),
                 "threshold": 0.1,
                 "severity":  "Medium",
+                "detail":    f"NDWI of {round(idx['ndwi'],4)} indicates very low water clarity. Healthy water bodies typically show NDWI above 0.3.",
+            })
+        elif idx["ndwi"] < 0.2:
+            triggered.append({
+                "type":      "Reduced Water Clarity",
+                "index":     "NDWI",
+                "value":     round(idx["ndwi"], 4),
+                "threshold": 0.2,
+                "severity":  "Low",
+                "detail":    f"NDWI of {round(idx['ndwi'],4)} suggests reduced water clarity, possibly due to sediment or organic matter.",
             })
 
-        # Recommendations
+        # Data-driven recommendations based on actual index values
+        recommendations = []
         if level == "Polluted":
-            recommendations = [
-                "Avoid recreational water contact immediately.",
-                "Do not use this water source for drinking or irrigation.",
-                "Notify local environmental authorities.",
-                "Collect water samples for laboratory analysis.",
-                "Mark area as restricted until further assessment.",
-            ]
+            recommendations.append("⛔ Avoid all recreational water contact immediately.")
+            recommendations.append("🚰 Do not use this water for drinking, cooking, or irrigation.")
+            if idx["ndti"] > 0.1:
+                recommendations.append(f"🌊 High turbidity (NDTI={round(idx['ndti'],3)}) — likely caused by runoff, erosion, or industrial discharge. Investigate upstream sources.")
+            if idx["fai"] > 0.02:
+                recommendations.append(f"🌿 Algal bloom detected (FAI={round(idx['fai'],5)}) — avoid skin contact; blooms can produce toxins harmful to humans and animals.")
+            if idx["ndwi"] < 0.1:
+                recommendations.append(f"💧 Very low water clarity (NDWI={round(idx['ndwi'],3)}) — high suspended solids detected. Water treatment required before any use.")
+            recommendations.append("📢 Notify local environmental protection authority.")
+            recommendations.append("🔬 Collect water samples for laboratory chemical analysis.")
+            recommendations.append("📍 Mark area as restricted until ground validation confirms safety.")
         elif level == "Moderate":
-            recommendations = [
-                "Exercise caution near this water body.",
-                "Monitor water quality over the next 2–4 weeks.",
-                "Increase sampling frequency.",
-                "Limit recreational activities.",
-            ]
+            recommendations.append("⚠️ Exercise caution near this water body.")
+            if idx["ndti"] > 0.0:
+                recommendations.append(f"🌊 Moderate turbidity detected (NDTI={round(idx['ndti'],3)}) — monitor for worsening trend over next 2–4 weeks.")
+            if idx["fai"] > 0.005:
+                recommendations.append(f"🌿 Early algal activity (FAI={round(idx['fai'],5)}) — watch for bloom development, especially in warm weather.")
+            recommendations.append("📊 Increase monitoring frequency to bi-weekly.")
+            recommendations.append("🏊 Limit recreational activities, especially for children and vulnerable groups.")
+            recommendations.append("📋 Document current conditions for trend comparison.")
         else:
-            recommendations = [
-                "Water quality appears normal.",
-                "Continue routine monitoring.",
-                "Track seasonal variations.",
-            ]
+            recommendations.append(f"✅ Water quality appears normal (Score: {cls['score']}/100).")
+            recommendations.append(f"💧 NDWI of {round(idx['ndwi'],3)} indicates good water presence and clarity.")
+            recommendations.append("📅 Continue routine monthly monitoring.")
+            recommendations.append("📈 Track seasonal variations — quality may change during monsoon or dry seasons.")
+            recommendations.append("🗂️ Archive this baseline reading for future comparison.")
 
         return {
             "location":        {"lat": round(lat, 5), "lng": round(lng, 5)},

@@ -729,7 +729,8 @@ function renderAlerts(data, demo=false) {
         <span class="ta-icon">⚡</span>
         <div class="ta-body">
           <strong>${t.type}</strong>
-          <span>${t.index}: ${t.value} (threshold: ${t.threshold})</span>
+          <span>${t.index}: <strong>${t.value}</strong> (threshold: ${t.threshold})</span>
+          ${t.detail ? `<span style="margin-top:2px;opacity:1;color:var(--text-secondary)">${t.detail}</span>` : ""}
         </div>
         <span class="ta-severity">${t.severity}</span>
       </div>`
