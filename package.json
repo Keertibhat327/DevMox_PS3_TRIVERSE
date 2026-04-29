@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "backend": "cd backend && py -m uvicorn app:app --reload --port 8000",
+    "dev": "py -m http.server 3000 --directory frontend"
+  },
+  "dependencies": {
+    "requirements": "^3.0.0"
+  }
+}
