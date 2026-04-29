@@ -295,46 +295,100 @@
   <!-- ── COMPARE TAB ──────────────────────────────────────────────────────── -->
   <section id="tab-compare" class="tab-panel" role="tabpanel">
     <div class="compare-layout">
+
+      <!-- Header -->
       <div class="compare-header">
         <h2><i class="fa-solid fa-code-compare"></i> Compare Locations</h2>
-        <p>Analyse two water bodies side by side. Set Location A and B from the Map tab, or enter coordinates below.</p>
+        <p>Analyse two water bodies side by side. Set Location A and B from the Map tab after analyzing, or enter coordinates manually below.</p>
       </div>
 
-      <!-- Input row -->
-      <div class="compare-inputs-row">
-        <div class="compare-input-card" id="compare-input-a">
-          <div class="compare-input-label">
-            <span class="loc-badge loc-a">A</span> Location A
+      <!-- Input cards -->
+      <div class="cmp-input-grid">
+
+        <div class="cmp-input-card">
+          <div class="cmp-input-card-header">
+            <span class="loc-badge loc-a">A</span>
+            <span class="cmp-input-card-title">Location A</span>
           </div>
-          <div class="coord-inputs">
-            <label for="cmp-lat-a">Latitude</label>
-            <input id="cmp-lat-a" type="number" step="0.0001" placeholder="e.g. 28.6139" />
-            <label for="cmp-lng-a">Longitude</label>
-            <input id="cmp-lng-a" type="number" step="0.0001" placeholder="e.g. 77.2090" />
+          
+          <!-- Search bar for Location A -->
+          <div class="cmp-search-wrap">
+            <div class="search-input-wrap">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input id="cmp-search-a" type="search" class="search-input"
+                placeholder="Search location…"
+                autocomplete="off" spellcheck="false"
+                aria-label="Search location A" />
+              <button id="cmp-search-clear-a" class="search-clear hidden" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <div id="cmp-search-spinner-a" class="search-spinner hidden"></div>
+            </div>
+            <ul id="cmp-search-results-a" class="search-results hidden" role="listbox"></ul>
           </div>
-          <div id="cmp-name-a" class="cmp-location-name"></div>
+
+          <div class="cmp-field-row">
+            <div class="cmp-field">
+              <label class="cmp-field-label" for="cmp-lat-a">Latitude</label>
+              <input id="cmp-lat-a" class="cmp-field-input" type="number" step="0.0001" placeholder="e.g. 28.6139" />
+            </div>
+            <div class="cmp-field">
+              <label class="cmp-field-label" for="cmp-lng-a">Longitude</label>
+              <input id="cmp-lng-a" class="cmp-field-input" type="number" step="0.0001" placeholder="e.g. 77.2090" />
+            </div>
+          </div>
+          <div id="cmp-name-a" class="cmp-set-name"></div>
         </div>
 
-        <div class="compare-vs-divider">VS</div>
-
-        <div class="compare-input-card" id="compare-input-b">
-          <div class="compare-input-label">
-            <span class="loc-badge loc-b">B</span> Location B
-          </div>
-          <div class="coord-inputs">
-            <label for="cmp-lat-b">Latitude</label>
-            <input id="cmp-lat-b" type="number" step="0.0001" placeholder="e.g. 51.5074" />
-            <label for="cmp-lng-b">Longitude</label>
-            <input id="cmp-lng-b" type="number" step="0.0001" placeholder="e.g. -0.1278" />
-          </div>
-          <div id="cmp-name-b" class="cmp-location-name"></div>
+        <div class="cmp-vs-col">
+          <div class="cmp-vs-badge">VS</div>
         </div>
+
+        <div class="cmp-input-card">
+          <div class="cmp-input-card-header">
+            <span class="loc-badge loc-b">B</span>
+            <span class="cmp-input-card-title">Location B</span>
+          </div>
+          
+          <!-- Search bar for Location B -->
+          <div class="cmp-search-wrap">
+            <div class="search-input-wrap">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input id="cmp-search-b" type="search" class="search-input"
+                placeholder="Search location…"
+                autocomplete="off" spellcheck="false"
+                aria-label="Search location B" />
+              <button id="cmp-search-clear-b" class="search-clear hidden" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <div id="cmp-search-spinner-b" class="search-spinner hidden"></div>
+            </div>
+            <ul id="cmp-search-results-b" class="search-results hidden" role="listbox"></ul>
+          </div>
+
+          <div class="cmp-field-row">
+            <div class="cmp-field">
+              <label class="cmp-field-label" for="cmp-lat-b">Latitude</label>
+              <input id="cmp-lat-b" class="cmp-field-input" type="number" step="0.0001" placeholder="e.g. 51.5074" />
+            </div>
+            <div class="cmp-field">
+              <label class="cmp-field-label" for="cmp-lng-b">Longitude</label>
+              <input id="cmp-lng-b" class="cmp-field-input" type="number" step="0.0001" placeholder="e.g. -0.1278" />
+            </div>
+          </div>
+          <div id="cmp-name-b" class="cmp-set-name"></div>
+        </div>
+
       </div>
 
-      <button id="btn-run-compare" class="btn btn-primary btn-compare-run">
-        <i class="fa-solid fa-satellite-dish"></i> Run Comparison
-      </button>
+      <!-- Run button -->
+      <div class="cmp-run-row">
+        <button id="btn-run-compare" class="btn btn-primary cmp-run-btn">
+          <i class="fa-solid fa-satellite-dish"></i> Run Comparison
+        </button>
+      </div>
 
+      <!-- Loading -->
       <div id="compare-loading" class="loading-overlay hidden" role="status">
         <div class="spinner"></div>
         <span>Fetching satellite data for both locations…</span>
@@ -343,72 +397,109 @@
       <!-- Results -->
       <div id="compare-results" class="compare-results hidden">
 
+        <!-- Side-by-side maps -->
+        <div class="cmp-maps-section">
+          <h3 class="cmp-section-title"><i class="fa-solid fa-map-location-dot"></i> Location Maps</h3>
+          <div class="cmp-maps-grid">
+            <div class="cmp-map-card">
+              <div class="cmp-map-header">
+                <span class="loc-badge loc-a">A</span>
+                <span id="cmp-map-name-a" class="cmp-map-name">Location A</span>
+                <button id="cmp-map-maximize-a" class="btn-icon-sm" title="Maximize map">
+                  <i class="fa-solid fa-expand"></i>
+                </button>
+              </div>
+              <div id="cmp-map-a" class="cmp-map"></div>
+            </div>
+            <div class="cmp-map-card">
+              <div class="cmp-map-header">
+                <span class="loc-badge loc-b">B</span>
+                <span id="cmp-map-name-b" class="cmp-map-name">Location B</span>
+                <button id="cmp-map-maximize-b" class="btn-icon-sm" title="Maximize map">
+                  <i class="fa-solid fa-expand"></i>
+                </button>
+              </div>
+              <div id="cmp-map-b" class="cmp-map"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Score cards -->
-        <div class="compare-score-cards">
-          <div class="compare-score-card" id="cmp-card-a">
-            <div class="cmp-card-header">
+        <div class="cmp-score-grid">
+          <div class="cmp-score-card" id="cmp-card-a">
+            <div class="cmp-score-card-top">
               <span class="loc-badge loc-a">A</span>
-              <span id="cmp-card-name-a" class="cmp-card-name"></span>
+              <span id="cmp-card-name-a" class="cmp-score-card-name"></span>
             </div>
-            <div id="cmp-score-a" class="cmp-score-big"></div>
-            <div id="cmp-label-a" class="cmp-label-badge"></div>
-            <div id="cmp-conf-a" class="cmp-confidence"></div>
+            <div id="cmp-score-a" class="cmp-score-number"></div>
+            <div class="cmp-score-unit">/100</div>
+            <div id="cmp-label-a"></div>
+            <div id="cmp-conf-a" class="cmp-conf-text"></div>
           </div>
 
-          <div class="compare-winner-badge" id="cmp-winner-badge"></div>
+          <div class="cmp-vs-result" id="cmp-winner-badge"></div>
 
-          <div class="compare-score-card" id="cmp-card-b">
-            <div class="cmp-card-header">
+          <div class="cmp-score-card" id="cmp-card-b">
+            <div class="cmp-score-card-top">
               <span class="loc-badge loc-b">B</span>
-              <span id="cmp-card-name-b" class="cmp-card-name"></span>
+              <span id="cmp-card-name-b" class="cmp-score-card-name"></span>
             </div>
-            <div id="cmp-score-b" class="cmp-score-big"></div>
-            <div id="cmp-label-b" class="cmp-label-badge"></div>
-            <div id="cmp-conf-b" class="cmp-confidence"></div>
+            <div id="cmp-score-b" class="cmp-score-number"></div>
+            <div class="cmp-score-unit">/100</div>
+            <div id="cmp-label-b"></div>
+            <div id="cmp-conf-b" class="cmp-conf-text"></div>
           </div>
         </div>
 
-        <!-- Comparison table -->
-        <div class="compare-table-wrap">
-          <h3>Detailed Metrics</h3>
-          <table class="compare-table" aria-label="Comparison metrics">
-            <thead>
-              <tr>
-                <th>Metric</th>
-                <th><span class="loc-badge loc-a">A</span> <span id="th-name-a"></span></th>
-                <th><span class="loc-badge loc-b">B</span> <span id="th-name-b"></span></th>
-                <th>Difference</th>
-              </tr>
-            </thead>
-            <tbody id="compare-table-body"></tbody>
-          </table>
+        <!-- Metrics table -->
+        <div class="cmp-table-card">
+          <div class="cmp-table-header">
+            <i class="fa-solid fa-table-cells"></i> Detailed Metrics
+          </div>
+          <div class="cmp-table-scroll">
+            <table class="cmp-table">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th><span class="loc-badge loc-a">A</span> <span id="th-name-a"></span></th>
+                  <th><span class="loc-badge loc-b">B</span> <span id="th-name-b"></span></th>
+                  <th>Δ Difference</th>
+                </tr>
+              </thead>
+              <tbody id="compare-table-body"></tbody>
+            </table>
+          </div>
         </div>
 
-        <!-- Overlay charts -->
-        <div class="compare-charts">
-          <div class="chart-card chart-card-wide">
-            <h3>Pollution Score Comparison</h3>
+        <!-- Charts -->
+        <div class="cmp-charts-grid">
+          <div class="chart-card">
+            <h3>Pollution Score</h3>
             <div id="cmp-chart-score" class="chart-container"></div>
           </div>
-          <div class="chart-card chart-card-wide">
-            <h3>Index Comparison (Radar)</h3>
+          <div class="chart-card">
+            <h3>Index Radar <span class="chart-hint">(higher = better quality)</span></h3>
             <div id="cmp-chart-radar" class="chart-container"></div>
           </div>
         </div>
 
         <!-- Insights -->
-        <div class="insights-box">
-          <h3><i class="fa-solid fa-lightbulb"></i> Analysis Insights</h3>
-          <ul id="insights-list" class="insights-list"></ul>
+        <div class="cmp-insights-card">
+          <div class="cmp-insights-header">
+            <i class="fa-solid fa-lightbulb"></i> Analysis Insights
+          </div>
+          <ul id="insights-list" class="cmp-insights-list"></ul>
         </div>
 
       </div>
 
+      <!-- Empty state -->
       <div id="compare-empty" class="empty-state">
         <div class="empty-icon">🔬</div>
         <p>Enter coordinates for two locations and click <strong>Run Comparison</strong>.<br>
-        Or use <strong>Set as A / Set as B</strong> buttons on the Map tab after analyzing a location.</p>
+        Or use <strong>Set as A / Set as B</strong> on the Map tab after analyzing a location.</p>
       </div>
+
     </div>
   </section>
 

@@ -102,6 +102,8 @@ const state = {
   layers: {rgb: null, ndwi: null, pollution: null},
   lastAnalysis: null,
   compareA: null, compareB: null,
+  compareMapA: null, compareMapB: null,
+  compareMarkerA: null, compareMarkerB: null,
   history: JSON.parse(localStorage.getItem("aw_history") || "[]"),
 };
 
@@ -128,16 +130,20 @@ const dom = {
   analysisLoading: $("analysis-loading"), analysisContent: $("analysis-content"), analysisEmpty: $("analysis-empty"),
   tsTrend: $("ts-trend"), tsPoints: $("ts-points"), tsAvgScore: $("ts-avg-score"), tsLatestStatus: $("ts-latest-status"),
   cmpLatA: $("cmp-lat-a"), cmpLngA: $("cmp-lng-a"), cmpLatB: $("cmp-lat-b"), cmpLngB: $("cmp-lng-b"),
-  cmpNameA: $("cmp-name-a"), cmpNameB: $("cmp-name-b"),
-  btnRunCompare: $("btn-run-compare"),
+  cmpNameA: $("cmp-name-a"), cmpNameB: $("cmp-name-b"),  btnRunCompare: $("btn-run-compare"),
+  cmpSearchA: $("cmp-search-a"), cmpSearchResultsA: $("cmp-search-results-a"), 
+  cmpSearchClearA: $("cmp-search-clear-a"), cmpSearchSpinnerA: $("cmp-search-spinner-a"),
+  cmpSearchB: $("cmp-search-b"), cmpSearchResultsB: $("cmp-search-results-b"),
+  cmpSearchClearB: $("cmp-search-clear-b"), cmpSearchSpinnerB: $("cmp-search-spinner-b"),
+  cmpMapNameA: $("cmp-map-name-a"), cmpMapNameB: $("cmp-map-name-b"),
+  cmpMapMaximizeA: $("cmp-map-maximize-a"), cmpMapMaximizeB: $("cmp-map-maximize-b"),
   compareLoading: $("compare-loading"), compareResults: $("compare-results"), compareEmpty: $("compare-empty"),
   cmpCardA: $("cmp-card-a"), cmpCardB: $("cmp-card-b"),
   cmpScoreA: $("cmp-score-a"), cmpScoreB: $("cmp-score-b"),
   cmpLabelA: $("cmp-label-a"), cmpLabelB: $("cmp-label-b"),
   cmpConfA: $("cmp-conf-a"), cmpConfB: $("cmp-conf-b"),
   cmpWinnerBadge: $("cmp-winner-badge"),
-  cmpCardNameA: $("cmp-card-name-a"), cmpCardNameB: $("cmp-card-name-b"),
-  thNameA: $("th-name-a"), thNameB: $("th-name-b"),
+  cmpCardNameA: $("cmp-card-name-a"), cmpCardNameB: $("cmp-card-name-b"),  thNameA: $("th-name-a"), thNameB: $("th-name-b"),
   compareTableBody: $("compare-table-body"),
   insightsList: $("insights-list"),
   btnCheckAlerts: $("btn-check-alerts"),
@@ -582,6 +588,11 @@ function renderCompare(data, nameA, nameB, demo=false) {
   dom.cmpCardNameA.textContent = nameA; dom.cmpCardNameB.textContent = nameB;
   dom.thNameA.textContent = nameA; dom.thNameB.textContent = nameB;
 
+  // Update maps
+  initCompareMaps();
+  updateCompareMap(data.location_a.lat, data.location_a.lng, nameA, 'A');
+  updateCompareMap(data.location_b.lat, data.location_b.lng, nameB, 'B');
+
   // Score cards
   dom.cmpScoreA.textContent = clsA.score; dom.cmpScoreA.style.color = clsA.color;
   dom.cmpScoreB.textContent = clsB.score; dom.cmpScoreB.style.color = clsB.color;
@@ -593,7 +604,7 @@ function renderCompare(data, nameA, nameB, demo=false) {
   // Winner highlight
   dom.cmpCardA.classList.toggle("is-winner", data.winner==="A");
   dom.cmpCardB.classList.toggle("is-winner", data.winner==="B");
-  dom.cmpWinnerBadge.innerHTML = `<span class="winner-crown">🏆</span> Location ${data.winner} is cleaner`;
+  dom.cmpWinnerBadge.innerHTML = `<span class="winner-crown">🏆</span><span>Location ${data.winner} is cleaner</span>`;
 
   // Comparison table
   const rows = [
@@ -607,8 +618,7 @@ function renderCompare(data, nameA, nameB, demo=false) {
     {metric:"Confidence", a:a.confidence.level, b:b.confidence.level, unit:"", isText:true},
   ];
 
-  dom.compareTableBody.innerHTML = rows.map(row => {
-    let diffCell = "—", aClass = "", bClass = "";
+  dom.compareTableBody.innerHTML = rows.map(row => {    let diffCell = "—", aClass = "", bClass = "";
     if (!row.isText) {
       const diff = parseFloat((row.a - row.b).toFixed(4));
       const better = row.higherIsBetter ? diff > 0 : diff < 0;
@@ -892,6 +902,318 @@ dom.searchInput.addEventListener("blur", () => setTimeout(hideSearch,150));
 dom.searchClear.addEventListener("click", () => { dom.searchInput.value=""; dom.searchClear.classList.add("hidden"); hideSearch(); dom.searchInput.focus(); });
 document.addEventListener("click", e => { if (!e.target.closest(".map-search-bar")) hideSearch(); });
 
+// ─── Compare Tab Search ───────────────────────────────────────────────────────
+let _cmpSearchAbortA = null, _cmpSearchAbortB = null;
+let _cmpFocusIdxA = -1, _cmpFocusIdxB = -1;
+let _cmpSearchResultsA = [], _cmpSearchResultsB = [];
+
+async function geocodeCompare(q, location) {
+  const isA = location === 'A';
+  const searchInput = isA ? dom.cmpSearchA : dom.cmpSearchB;
+  const searchResults = isA ? dom.cmpSearchResultsA : dom.cmpSearchResultsB;
+  const searchSpinner = isA ? dom.cmpSearchSpinnerA : dom.cmpSearchSpinnerB;
+  const searchClear = isA ? dom.cmpSearchClearA : dom.cmpSearchClearB;
+  const abortController = isA ? _cmpSearchAbortA : _cmpSearchAbortB;
+  
+  if (q.length < 2) { 
+    searchResults.classList.add("hidden"); 
+    searchInput.setAttribute("aria-expanded", "false");
+    return; 
+  }
+  
+  if (abortController) abortController.abort();
+  const newAbort = new AbortController();
+  if (isA) _cmpSearchAbortA = newAbort;
+  else _cmpSearchAbortB = newAbort;
+  
+  searchSpinner.classList.remove("hidden");
+  searchClear.classList.add("hidden");
+  
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?` + new URLSearchParams({q, format: "json", limit: 8, addressdetails: 1});
+    const r = await fetch(url, {signal: newAbort.signal, headers: {"Accept-Language": "en"}});
+    if (!r.ok) throw new Error();
+    const results = await r.json();
+    renderCompareSearch(results, q, location);
+  } catch(e) {
+    if (e.name === "AbortError") return;
+    searchResults.innerHTML = `<li class="search-no-results"><i class="fa-solid fa-triangle-exclamation"></i> Search unavailable</li>`;
+    searchResults.classList.remove("hidden");
+    searchInput.setAttribute("aria-expanded", "true");
+  } finally {
+    searchSpinner.classList.add("hidden");
+    if (searchInput.value.trim()) searchClear.classList.remove("hidden");
+  }
+}
+
+function renderCompareSearch(results, q, location) {
+  const isA = location === 'A';
+  const searchResults = isA ? dom.cmpSearchResultsA : dom.cmpSearchResultsB;
+  const searchInput = isA ? dom.cmpSearchA : dom.cmpSearchB;
+  
+  if (isA) {
+    _cmpSearchResultsA = results;
+    _cmpFocusIdxA = -1;
+  } else {
+    _cmpSearchResultsB = results;
+    _cmpFocusIdxB = -1;
+  }
+  
+  if (!results.length) {
+    searchResults.innerHTML = `<li class="search-no-results"><i class="fa-solid fa-droplet-slash"></i> No results for "${escHtml(q)}"</li>`;
+    searchResults.classList.remove("hidden");
+    searchInput.setAttribute("aria-expanded", "true");
+    return;
+  }
+  
+  searchResults.innerHTML = "";
+  results.forEach((r, i) => {
+    const icon = getIcon(r.type, r.class);
+    const name = r.name || r.display_name.split(",")[0];
+    const detail = r.display_name.replace(name + ", ", "").slice(0, 80);
+    const li = document.createElement("li");
+    li.className = "search-result-item";
+    li.setAttribute("role", "option");
+    li.dataset.index = i;
+    li.innerHTML = `<span class="search-result-icon">${icon}</span>
+      <span class="search-result-body">
+        <span class="search-result-name">${escHtml(name)}</span>
+        <span class="search-result-detail">${escHtml(detail)}</span>
+      </span>
+      <span class="search-result-coords">${parseFloat(r.lat).toFixed(3)}, ${parseFloat(r.lon).toFixed(3)}</span>`;
+    li.addEventListener("mousedown", e => { e.preventDefault(); selectCompareResult(r, location); });
+    searchResults.appendChild(li);
+  });
+  
+  searchResults.classList.remove("hidden");
+  searchInput.setAttribute("aria-expanded", "true");
+}
+
+function selectCompareResult(r, location) {
+  const isA = location === 'A';
+  const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+  const name = r.name || r.display_name.split(",")[0];
+  
+  if (isA) {
+    dom.cmpSearchA.value = name;
+    dom.cmpSearchClearA.classList.remove("hidden");
+    dom.cmpSearchResultsA.classList.add("hidden");
+    dom.cmpSearchA.setAttribute("aria-expanded", "false");
+    dom.cmpLatA.value = lat.toFixed(5);
+    dom.cmpLngA.value = lng.toFixed(5);
+    dom.cmpNameA.textContent = name;
+  } else {
+    dom.cmpSearchB.value = name;
+    dom.cmpSearchClearB.classList.remove("hidden");
+    dom.cmpSearchResultsB.classList.add("hidden");
+    dom.cmpSearchB.setAttribute("aria-expanded", "false");
+    dom.cmpLatB.value = lat.toFixed(5);
+    dom.cmpLngB.value = lng.toFixed(5);
+    dom.cmpNameB.textContent = name;
+  }
+}
+
+// Search input handlers for Location A
+function initCompareSearchHandlers() {
+  if (!dom.cmpSearchA || !dom.cmpSearchB) {
+    setTimeout(initCompareSearchHandlers, 500);
+    return;
+  }
+
+  // Location A handlers
+  dom.cmpSearchA.addEventListener("input", debounce(e => {
+    const q = e.target.value.trim();
+    if (q) {
+      dom.cmpSearchClearA.classList.remove("hidden");
+      geocodeCompare(q, 'A');
+    } else {
+      dom.cmpSearchClearA.classList.add("hidden");
+      dom.cmpSearchResultsA.classList.add("hidden");
+      dom.cmpSearchA.setAttribute("aria-expanded", "false");
+    }
+  }, 350));
+
+  dom.cmpSearchA.addEventListener("keydown", e => {
+    const items = dom.cmpSearchResultsA.querySelectorAll(".search-result-item");
+    if (!items.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      _cmpFocusIdxA = Math.min(_cmpFocusIdxA + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle("focused", i === _cmpFocusIdxA));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      _cmpFocusIdxA = Math.max(_cmpFocusIdxA - 1, 0);
+      items.forEach((el, i) => el.classList.toggle("focused", i === _cmpFocusIdxA));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (_cmpFocusIdxA >= 0 && _cmpSearchResultsA[_cmpFocusIdxA]) selectCompareResult(_cmpSearchResultsA[_cmpFocusIdxA], 'A');
+      else if (_cmpSearchResultsA.length) selectCompareResult(_cmpSearchResultsA[0], 'A');
+    } else if (e.key === "Escape") {
+      dom.cmpSearchResultsA.classList.add("hidden");
+      dom.cmpSearchA.setAttribute("aria-expanded", "false");
+      dom.cmpSearchA.blur();
+    }
+  });
+
+  dom.cmpSearchA.addEventListener("blur", () => setTimeout(() => {
+    dom.cmpSearchResultsA.classList.add("hidden");
+    dom.cmpSearchA.setAttribute("aria-expanded", "false");
+  }, 150));
+
+  dom.cmpSearchClearA.addEventListener("click", () => {
+    dom.cmpSearchA.value = "";
+    dom.cmpSearchClearA.classList.add("hidden");
+    dom.cmpSearchResultsA.classList.add("hidden");
+    dom.cmpSearchA.setAttribute("aria-expanded", "false");
+    dom.cmpSearchA.focus();
+  });
+
+  // Location B handlers
+  dom.cmpSearchB.addEventListener("input", debounce(e => {
+    const q = e.target.value.trim();
+    if (q) {
+      dom.cmpSearchClearB.classList.remove("hidden");
+      geocodeCompare(q, 'B');
+    } else {
+      dom.cmpSearchClearB.classList.add("hidden");
+      dom.cmpSearchResultsB.classList.add("hidden");
+      dom.cmpSearchB.setAttribute("aria-expanded", "false");
+    }
+  }, 350));
+
+  dom.cmpSearchB.addEventListener("keydown", e => {
+    const items = dom.cmpSearchResultsB.querySelectorAll(".search-result-item");
+    if (!items.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      _cmpFocusIdxB = Math.min(_cmpFocusIdxB + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle("focused", i === _cmpFocusIdxB));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      _cmpFocusIdxB = Math.max(_cmpFocusIdxB - 1, 0);
+      items.forEach((el, i) => el.classList.toggle("focused", i === _cmpFocusIdxB));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (_cmpFocusIdxB >= 0 && _cmpSearchResultsB[_cmpFocusIdxB]) selectCompareResult(_cmpSearchResultsB[_cmpFocusIdxB], 'B');
+      else if (_cmpSearchResultsB.length) selectCompareResult(_cmpSearchResultsB[0], 'B');
+    } else if (e.key === "Escape") {
+      dom.cmpSearchResultsB.classList.add("hidden");
+      dom.cmpSearchB.setAttribute("aria-expanded", "false");
+      dom.cmpSearchB.blur();
+    }
+  });
+
+  dom.cmpSearchB.addEventListener("blur", () => setTimeout(() => {
+    dom.cmpSearchResultsB.classList.add("hidden");
+    dom.cmpSearchB.setAttribute("aria-expanded", "false");
+  }, 150));
+
+  dom.cmpSearchClearB.addEventListener("click", () => {
+    dom.cmpSearchB.value = "";
+    dom.cmpSearchClearB.classList.add("hidden");
+    dom.cmpSearchResultsB.classList.add("hidden");
+    dom.cmpSearchB.setAttribute("aria-expanded", "false");
+    dom.cmpSearchB.focus();
+  });
+}
+
+// Initialize search handlers (call once on page load)
+
+// ─── Compare Maps ─────────────────────────────────────────────────────────────
+function initCompareMaps() {
+  if (!state.compareMapA) {
+    state.compareMapA = L.map("cmp-map-a", {center: [20, 0], zoom: 3, zoomControl: true});
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {attribution: "Tiles © Esri", maxZoom: 19}).addTo(state.compareMapA);
+  }
+  if (!state.compareMapB) {
+    state.compareMapB = L.map("cmp-map-b", {center: [20, 0], zoom: 3, zoomControl: true});
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {attribution: "Tiles © Esri", maxZoom: 19}).addTo(state.compareMapB);
+  }
+  setTimeout(() => {
+    state.compareMapA.invalidateSize();
+    state.compareMapB.invalidateSize();
+  }, 100);
+}
+
+function updateCompareMap(lat, lng, name, location) {
+  const isA = location === 'A';
+  const mapInstance = isA ? state.compareMapA : state.compareMapB;
+  
+  if (!mapInstance) return;
+  
+  // Remove old marker
+  if (isA && state.compareMarkerA) {
+    mapInstance.removeLayer(state.compareMarkerA);
+  } else if (!isA && state.compareMarkerB) {
+    mapInstance.removeLayer(state.compareMarkerB);
+  }
+  
+  // Add new marker
+  const marker = L.circleMarker([lat, lng], {
+    radius: 10,
+    color: "#fff",
+    fillColor: isA ? "#3b82f6" : "#f39c12",
+    fillOpacity: 0.95,
+    weight: 3
+  }).addTo(mapInstance);
+  
+  marker.bindPopup(
+    `<div style="font-size:13px;line-height:1.6;min-width:140px">
+      <strong style="color:${isA ? '#3b82f6' : '#f39c12'}">📍 ${escHtml(name)}</strong><br>
+      <span style="color:#94a3b8">Lat:</span> ${lat.toFixed(5)}<br>
+      <span style="color:#94a3b8">Lng:</span> ${lng.toFixed(5)}
+    </div>`
+  );
+  
+  if (isA) {
+    state.compareMarkerA = marker;
+    dom.cmpMapNameA.textContent = name;
+  } else {
+    state.compareMarkerB = marker;
+    dom.cmpMapNameB.textContent = name;
+  }
+  
+  mapInstance.setView([lat, lng], 11);
+}
+
+// Map maximize handlers
+dom.cmpMapMaximizeA.addEventListener("click", () => {
+  const mapCard = dom.cmpMapMaximizeA.closest(".cmp-map-card");
+  mapCard.classList.toggle("maximized");
+  const icon = dom.cmpMapMaximizeA.querySelector("i");
+  if (mapCard.classList.contains("maximized")) {
+    icon.className = "fa-solid fa-compress";
+    dom.cmpMapMaximizeA.title = "Minimize map";
+  } else {
+    icon.className = "fa-solid fa-expand";
+    dom.cmpMapMaximizeA.title = "Maximize map";
+  }
+  setTimeout(() => state.compareMapA?.invalidateSize(), 100);
+});
+
+dom.cmpMapMaximizeB.addEventListener("click", () => {
+  const mapCard = dom.cmpMapMaximizeB.closest(".cmp-map-card");
+  mapCard.classList.toggle("maximized");
+  const icon = dom.cmpMapMaximizeB.querySelector("i");
+  if (mapCard.classList.contains("maximized")) {
+    icon.className = "fa-solid fa-compress";
+    dom.cmpMapMaximizeB.title = "Minimize map";
+  } else {
+    icon.className = "fa-solid fa-expand";
+    dom.cmpMapMaximizeB.title = "Maximize map";
+  }
+  setTimeout(() => state.compareMapB?.invalidateSize(), 100);
+});
+
+// Initialize maps when compare tab is opened
+document.querySelector('[data-tab="compare"]').addEventListener("click", () => {
+  setTimeout(() => {
+    initCompareMaps();
+  }, 100);
+});
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function escHtml(str) {
   const d=document.createElement("div"); d.appendChild(document.createTextNode(String(str))); return d.innerHTML;
@@ -912,4 +1234,5 @@ function formatTimestamp(ts) {
   setInterval(checkHealth, 60000);
   setTimeout(() => map.invalidateSize(), 300);
   renderHistory();
+  initCompareSearchHandlers();
 })();
