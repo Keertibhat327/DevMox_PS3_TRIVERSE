@@ -429,9 +429,11 @@ function renderResultCard(data, demo=false) {
     : `<span style="font-size:0.75rem;color:var(--text-muted)">No significant factors detected</span>`;
 
   // Water Appearance (NEW)
+  console.log('🔍 Checking water_appearance:', data.water_appearance);
   if (data.water_appearance) {
     const wa = data.water_appearance;
     const appearanceEl = document.getElementById('water-appearance');
+    console.log('🔍 water-appearance element:', appearanceEl);
     if (appearanceEl) {
       appearanceEl.innerHTML = `
         <div class="appearance-badge">${escHtml(wa.appearance)}</div>
@@ -439,13 +441,20 @@ function renderResultCard(data, demo=false) {
         <p class="appearance-indicator"><strong>Indicator:</strong> ${escHtml(wa.indicator)}</p>
         <p class="appearance-note"><i class="fa-solid fa-info-circle"></i> ${escHtml(wa.note)}</p>
       `;
+      console.log('✅ Water Appearance rendered!');
+    } else {
+      console.error('❌ water-appearance element not found in DOM!');
     }
+  } else {
+    console.warn('⚠️ No water_appearance data in response');
   }
 
   // Possible Pollution Sources (NEW)
+  console.log('🔍 Checking pollution_sources:', data.pollution_sources);
   if (data.pollution_sources) {
     const ps = data.pollution_sources;
     const sourcesEl = document.getElementById('pollution-sources');
+    console.log('🔍 pollution-sources element:', sourcesEl);
     if (sourcesEl) {
       sourcesEl.innerHTML = `
         <div class="sources-confidence">Confidence: <strong>${escHtml(ps.confidence)}</strong></div>
@@ -463,13 +472,20 @@ function renderResultCard(data, demo=false) {
         `).join('')}
         <p class="sources-disclaimer"><i class="fa-solid fa-shield-halved"></i> ${escHtml(ps.disclaimer)}</p>
       `;
+      console.log('✅ Pollution Sources rendered!');
+    } else {
+      console.error('❌ pollution-sources element not found in DOM!');
     }
+  } else {
+    console.warn('⚠️ No pollution_sources data in response');
   }
 
   // Data Reliability (NEW)
+  console.log('🔍 Checking data_reliability:', data.data_reliability);
   if (data.data_reliability) {
     const dr = data.data_reliability;
     const reliabilityEl = document.getElementById('data-reliability');
+    console.log('🔍 data-reliability element:', reliabilityEl);
     if (reliabilityEl) {
       const confColor = dr.confidence_level==="High"?"var(--safe)":dr.confidence_level==="Medium"?"var(--moderate)":"var(--polluted)";
       reliabilityEl.innerHTML = `
@@ -496,7 +512,12 @@ function renderResultCard(data, demo=false) {
         </div>
         <p class="reliability-note">${escHtml(dr.reliability_note)}</p>
       `;
+      console.log('✅ Data Reliability rendered!');
+    } else {
+      console.error('❌ data-reliability element not found in DOM!');
     }
+  } else {
+    console.warn('⚠️ No data_reliability data in response');
   }
 
   dom.resultImages.textContent = `📡 ${data.images_used} images · ☁️ ${data.cloud_cover_pct}% cloud${demo?" (demo)":""}`;

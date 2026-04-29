@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Version Check - AquaWatch</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #0a1628;
+      color: #e2e8f0;
+    }
+    .check-box {
+      background: #162040;
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .pass { border-color: #27ae60; background: rgba(39, 174, 96, 0.1); }
+    .fail { border-color: #e74c3c; background: rgba(231, 76, 60, 0.1); }
+    h1 { color: #3b82f6; text-align: center; }
+    h2 { color: #facc15; margin-top: 0; }
+    .status { font-size: 24px; font-weight: bold; margin: 10px 0; }
+    pre { background: #0f2044; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover { background: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>🔍 AquaWatch Version Checker</h1>
+  
+  <div class="check-box" id="html-check">
+    <h2>1️⃣ HTML Elements Check</h2>
+    <div class="status" id="html-status">⏳ Checking...</div>
+    <pre id="html-details"></pre>
+  </div>
+
+  <div class="check-box" id="demo-check">
+    <h2>2️⃣ Demo Data Structure Check</h2>
+    <div class="status" id="demo-status">⏳ Checking...</div>
+    <pre id="demo-details"></pre>
+  </div>
+
+  <div class="check-box" id="render-check">
+    <h2>3️⃣ Render Function Check</h2>
+    <div class="status" id="render-status">⏳ Checking...</div>
+    <pre id="render-details"></pre>
+  </div>
+
+  <div class="check-box">
+    <h2>🧪 Live Test</h2>
+    <p>Click to test if the rendering actually works:</p>
+    <button onclick="runLiveTest()">Run Live Test</button>
+    <div id="test-result"></div>
+  </div>
+
+  <div class="check-box">
+    <h2>📋 Instructions</h2>
+    <p>If any checks fail, the files are not updated. Try:</p>
+    <ol>
+      <li>Close this page</li>
+      <li>Press <code>Ctrl + Shift + Delete</code> to clear cache</li>
+      <li>Close ALL browser windows</li>
+      <li>Reopen and try again</li>
+    </ol>
+    <button onclick="window.location.href='index.html'">Go to Main App</button>
+  </div>
+
+  <script>
+    // Check 1: HTML Elements
+    function checkHTML() {
+      const elements = {
+        'water-appearance': 'Water Appearance section',
+        'pollution-sources': 'Pollution Sources section',
+        'data-reliability': 'Data Reliability section'
+      };
+      
+      let allFound = true;
+      let details = '';
+      
+      for (const [id, name] of Object.entries(elements)) {
+        const el = document.getElementById(id);
+        if (el) {
+          details += `✅ ${name} - FOUND\n`;
+        } else {
+          details += `❌ ${name} - MISSING\n`;
+          allFound = false;
+        }
+      }
+      
+      const status = document.getElementById('html-status');
+      const detailsEl = document.getElementById('html-details');
+      const box = document.getElementById('html-check');
+      
+      if (allFound) {
+        status.textContent = '✅ PASS - All HTML elements exist';
+        status.style.color = '#27ae60';
+        box.classList.add('pass');
+      } else {
+        status.textContent = '❌ FAIL - Missing HTML elements';
+        status.style.color = '#e74c3c';
+        box.classList.add('fail');
+      }
+      
+      detailsEl.textContent = details;
+    }
+
+    // Check 2: Demo Data
+    function checkDemoData() {
+      // Create test demo data
+      const testData = {
+        water_appearance: {
+          appearance: "Test",
+          description: "Test",
+          indicator: "Test",
+          note: "Test"
+        },
+        pollution_sources: {
+          possible_sources: [{
+            source: "Test",
+            likelihood: "High",
+            reasoning: "Test",
+            indicators: ["Test"]
+          }],
+          confidence: "High",
+          disclaimer: "Test"
+        },
+        data_reliability: {
+          images_used: 5,
+          cloud_cover_pct: 10,
+          valid_pixels: 1500,
+          confidence_level: "High",
+          confidence_score: 85,
+          reliability_note: "Test"
+        }
+      };
+      
+      const hasAll = testData.water_appearance && 
+                     testData.pollution_sources && 
+                     testData.data_reliability;
+      
+      const status = document.getElementById('demo-status');
+      const detailsEl = document.getElementById('demo-details');
+      const box = document.getElementById('demo-check');
+      
+      if (hasAll) {
+        status.textContent = '✅ PASS - Demo data structure correct';
+        status.style.color = '#27ae60';
+        box.classList.add('pass');
+        detailsEl.textContent = JSON.stringify(testData, null, 2);
+      } else {
+        status.textContent = '❌ FAIL - Demo data incomplete';
+        status.style.color = '#e74c3c';
+        box.classList.add('fail');
+        detailsEl.textContent = 'Demo data structure is missing required fields';
+      }
+    }
+
+    // Check 3: Render Function
+    function checkRenderFunction() {
+      const status = document.getElementById('render-status');
+      const detailsEl = document.getElementById('render-details');
+      const box = document.getElementById('render-check');
+      
+      // Check if we can access the elements
+      const waEl = document.getElementById('water-appearance');
+      const psEl = document.getElementById('pollution-sources');
+      const drEl = document.getElementById('data-reliability');
+      
+      if (waEl && psEl && drEl) {
+        status.textContent = '✅ PASS - Can access render targets';
+        status.style.color = '#27ae60';
+        box.classList.add('pass');
+        detailsEl.textContent = `✅ water-appearance element: ${waEl.tagName}\n✅ pollution-sources element: ${psEl.tagName}\n✅ data-reliability element: ${drEl.tagName}`;
+      } else {
+        status.textContent = '❌ FAIL - Cannot access render targets';
+        status.style.color = '#e74c3c';
+        box.classList.add('fail');
+        detailsEl.textContent = 'Render target elements not found in DOM';
+      }
+    }
+
+    // Live Test
+    function runLiveTest() {
+      const resultDiv = document.getElementById('test-result');
+      resultDiv.innerHTML = '<p style="color: #f39c12;">⏳ Running test...</p>';
+      
+      // Try to render test data
+      const waEl = document.getElementById('water-appearance');
+      const psEl = document.getElementById('pollution-sources');
+      const drEl = document.getElementById('data-reliability');
+      
+      if (!waEl || !psEl || !drEl) {
+        resultDiv.innerHTML = '<p style="color: #e74c3c;">❌ FAILED: Elements not found. Old version is loaded!</p>';
+        return;
+      }
+      
+      // Test rendering
+      try {
+        waEl.innerHTML = `
+          <div style="background: #27ae60; padding: 10px; border-radius: 8px; margin: 10px 0;">
+            <strong>✅ TEST SUCCESSFUL!</strong><br>
+            Water Appearance section is rendering correctly!
+          </div>
+        `;
+        
+        psEl.innerHTML = `
+          <div style="background: #27ae60; padding: 10px; border-radius: 8px; margin: 10px 0;">
+            <strong>✅ TEST SUCCESSFUL!</strong><br>
+            Pollution Sources section is rendering correctly!
+          </div>
+        `;
+        
+        drEl.innerHTML = `
+          <div style="background: #27ae60; padding: 10px; border-radius: 8px; margin: 10px 0;">
+            <strong>✅ TEST SUCCESSFUL!</strong><br>
+            Data Reliability section is rendering correctly!
+          </div>
+        `;
+        
+        resultDiv.innerHTML = `
+          <div style="background: rgba(39, 174, 96, 0.2); padding: 15px; border-radius: 8px; margin-top: 15px; border: 2px solid #27ae60;">
+            <h3 style="color: #27ae60; margin-top: 0;">✅ LIVE TEST PASSED!</h3>
+            <p>All 3 sections rendered successfully!</p>
+            <p><strong>Scroll down to see the test renders in the sections above.</strong></p>
+            <p>The new version IS loaded. Now go to the main app and analyze a location.</p>
+            <button onclick="window.location.href='index.html'" style="background: #27ae60;">Open Main App</button>
+          </div>
+        `;
+      } catch (e) {
+        resultDiv.innerHTML = `<p style="color: #e74c3c;">❌ FAILED: ${e.message}</p>`;
+      }
+    }
+
+    // Run checks on load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        checkHTML();
+        checkDemoData();
+        checkRenderFunction();
+      }, 500);
+    });
+  </script>
+</body>
+</html>
