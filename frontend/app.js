@@ -146,7 +146,10 @@ function demoAlerts(lat, lng) {
   return {location:{lat,lng},alert_level:level,severity:level==="Polluted"?"High":level==="Moderate"?"Medium":"None",
     alert_color:a.classification.color,pollution_score:a.classification.score,
     factors:a.classification.factors,indices:a.indices,confidence:a.confidence,
-    triggered_alerts:triggered,recommendations:recs,timestamp:new Date().toISOString(),_demo:true};
+    triggered_alerts:triggered,recommendations:recs,
+    pollution_sources:a.pollution_sources,
+    data_reliability:a.data_reliability,
+    timestamp:new Date().toISOString(),_demo:true};
 }
 
 function demoCompare(lat1,lng1,lat2,lng2) {
@@ -455,32 +458,40 @@ function renderResultCard(data, demo=false) {
     : `<span style="font-size:0.75rem;color:var(--text-muted)">No significant factors detected</span>`;
 
   // Water Appearance (NEW)
-  console.log('🔍 Checking water_appearance:', data.water_appearance);
   if (data.water_appearance) {
     const wa = data.water_appearance;
     const appearanceEl = document.getElementById('water-appearance');
-    console.log('🔍 water-appearance element:', appearanceEl);
     if (appearanceEl) {
+      // Determine badge color based on appearance type
+      let badgeColor = 'rgba(59, 130, 246, 0.15)';
+      let badgeTextColor = '#3b82f6';
+      const appearance = wa.appearance.toLowerCase();
+      if (appearance.includes('brownish') || appearance.includes('murky')) {
+        badgeColor = 'rgba(243, 156, 18, 0.15)';
+        badgeTextColor = '#f39c12';
+      } else if (appearance.includes('greenish')) {
+        badgeColor = 'rgba(39, 174, 96, 0.15)';
+        badgeTextColor = '#27ae60';
+      } else if (appearance.includes('clear') || appearance.includes('blue')) {
+        badgeColor = 'rgba(59, 130, 246, 0.15)';
+        badgeTextColor = '#3b82f6';
+      }
+      
       appearanceEl.innerHTML = `
-        <div class="appearance-badge">${escHtml(wa.appearance)}</div>
+        <div class="appearance-badge" style="background: ${badgeColor}; color: ${badgeTextColor}; border-color: ${badgeTextColor}40;">
+          ${escHtml(wa.appearance)}
+        </div>
         <p class="appearance-desc">${escHtml(wa.description)}</p>
         <p class="appearance-indicator"><strong>Indicator:</strong> ${escHtml(wa.indicator)}</p>
         <p class="appearance-note"><i class="fa-solid fa-info-circle"></i> ${escHtml(wa.note)}</p>
       `;
-      console.log('✅ Water Appearance rendered!');
-    } else {
-      console.error('❌ water-appearance element not found in DOM!');
     }
-  } else {
-    console.warn('⚠️ No water_appearance data in response');
   }
 
   // Possible Pollution Sources (NEW)
-  console.log('🔍 Checking pollution_sources:', data.pollution_sources);
   if (data.pollution_sources) {
     const ps = data.pollution_sources;
     const sourcesEl = document.getElementById('pollution-sources');
-    console.log('🔍 pollution-sources element:', sourcesEl);
     if (sourcesEl) {
       sourcesEl.innerHTML = `
         <div class="sources-confidence">Confidence: <strong>${escHtml(ps.confidence)}</strong></div>
@@ -498,22 +509,15 @@ function renderResultCard(data, demo=false) {
         `).join('')}
         <p class="sources-disclaimer"><i class="fa-solid fa-shield-halved"></i> ${escHtml(ps.disclaimer)}</p>
       `;
-      console.log('✅ Pollution Sources rendered!');
-    } else {
-      console.error('❌ pollution-sources element not found in DOM!');
     }
-  } else {
-    console.warn('⚠️ No pollution_sources data in response');
   }
 
   // Data Reliability (NEW)
-  console.log('🔍 Checking data_reliability:', data.data_reliability);
   if (data.data_reliability) {
     const dr = data.data_reliability;
     const reliabilityEl = document.getElementById('data-reliability');
-    console.log('🔍 data-reliability element:', reliabilityEl);
     if (reliabilityEl) {
-      const confColor = dr.confidence_level==="High"?"var(--safe)":dr.confidence_level==="Medium"?"var(--moderate)":"var(--polluted)";
+      const confColor = dr.confidence_level==="High"?"#27ae60":dr.confidence_level==="Medium"?"#f39c12":"#e74c3c";
       reliabilityEl.innerHTML = `
         <div class="reliability-grid">
           <div class="reliability-item">
@@ -538,12 +542,7 @@ function renderResultCard(data, demo=false) {
         </div>
         <p class="reliability-note">${escHtml(dr.reliability_note)}</p>
       `;
-      console.log('✅ Data Reliability rendered!');
-    } else {
-      console.error('❌ data-reliability element not found in DOM!');
     }
-  } else {
-    console.warn('⚠️ No data_reliability data in response');
   }
 
   dom.resultImages.textContent = `📡 ${data.images_used} images · ☁️ ${data.cloud_cover_pct}% cloud${demo?" (demo)":""}`;
@@ -1255,6 +1254,63 @@ function renderAlerts(data, demo=false) {
 
   dom.alertTimestamp.textContent = `Last checked: ${formatTimestamp(data.timestamp)}`;
   updateAlertBadge(data.alert_level);
+
+  // Possible Pollution Sources (NEW) - in Alerts tab
+  if (data.pollution_sources) {
+    const ps = data.pollution_sources;
+    const alertSourcesEl = document.getElementById('alert-pollution-sources');
+    if (alertSourcesEl) {
+      alertSourcesEl.innerHTML = `
+        <div class="sources-confidence">Confidence: <strong>${escHtml(ps.confidence)}</strong></div>
+        ${ps.possible_sources.map(source => `
+          <div class="source-item">
+            <div class="source-header">
+              <span class="source-name">${escHtml(source.source)}</span>
+              <span class="source-likelihood likelihood-${source.likelihood.toLowerCase()}">${escHtml(source.likelihood)}</span>
+            </div>
+            <p class="source-reasoning">${escHtml(source.reasoning)}</p>
+            <div class="source-indicators">
+              ${source.indicators.map(ind => `<span class="indicator-tag">${escHtml(ind)}</span>`).join('')}
+            </div>
+          </div>
+        `).join('')}
+        <p class="sources-disclaimer"><i class="fa-solid fa-shield-halved"></i> ${escHtml(ps.disclaimer)}</p>
+      `;
+    }
+  }
+
+  // Data Reliability (NEW) - in Alerts tab
+  if (data.data_reliability) {
+    const dr = data.data_reliability;
+    const alertReliabilityEl = document.getElementById('alert-data-reliability');
+    if (alertReliabilityEl) {
+      const confColor = dr.confidence_level==="High"?"#27ae60":dr.confidence_level==="Medium"?"#f39c12":"#e74c3c";
+      alertReliabilityEl.innerHTML = `
+        <div class="reliability-grid">
+          <div class="reliability-item">
+            <div class="reliability-label">Images Used</div>
+            <div class="reliability-value">${dr.images_used}</div>
+          </div>
+          <div class="reliability-item">
+            <div class="reliability-label">Cloud Cover</div>
+            <div class="reliability-value">${dr.cloud_cover_pct}%</div>
+          </div>
+          <div class="reliability-item">
+            <div class="reliability-label">Valid Pixels</div>
+            <div class="reliability-value">${dr.valid_pixels.toLocaleString()}</div>
+          </div>
+          <div class="reliability-item">
+            <div class="reliability-label">Confidence</div>
+            <div class="reliability-value" style="color:${confColor}">${dr.confidence_level}</div>
+          </div>
+        </div>
+        <div class="reliability-score-bar">
+          <div class="reliability-score-fill" style="width:${dr.confidence_score}%;background:${confColor}"></div>
+        </div>
+        <p class="reliability-note">${escHtml(dr.reliability_note)}</p>
+      `;
+    }
+  }
 }
 
 // ─── API Health ───────────────────────────────────────────────────────────────

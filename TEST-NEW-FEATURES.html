@@ -120,93 +120,153 @@
   <div class="test-section">
     <h2>✅ Next Steps</h2>
     <p>Once all tests pass:</p>
-    <button onclick="window.location.href='index.html?v=7'">Open AquaVision (Force Reload)</button>
-    <button onclick="window.location.href='index.html'">Open AquaVision (Normal)</button>
+    <button onclick="window.location.href='frontend/index.html'">Open AquaWatch</button>
+    <button onclick="window.location.href='IMPLEMENTATION-SUMMARY.md'">View Implementation Summary</button>
   </div>
 
   <script>
     // Test 1: Cache Version
     function testCache() {
-      const scriptTags = document.querySelectorAll('script[src*="app.js"]');
-      const cssTags = document.querySelectorAll('link[href*="styles.css"]');
-      
-      let hasV7 = false;
-      scriptTags.forEach(tag => {
-        if (tag.src.includes('v=7')) hasV7 = true;
-      });
-      cssTags.forEach(tag => {
-        if (tag.href.includes('v=7')) hasV7 = true;
-      });
-
       const status = document.getElementById('cache-status');
       const details = document.getElementById('cache-details');
       const section = document.getElementById('cache-test');
       
-      if (hasV7) {
-        status.textContent = '✅ PASS - Version 7 detected';
-        status.style.color = '#27ae60';
-        section.classList.add('success');
-        details.innerHTML = '<p>✓ Latest version is loaded</p>';
-      } else {
-        status.textContent = '❌ FAIL - Old version detected';
-        status.style.color = '#e74c3c';
-        section.classList.add('error');
-        details.innerHTML = '<p>⚠️ Browser is using cached version. Please clear cache!</p>';
-      }
+      // Check if we can load the main page files
+      fetch('frontend/app.js')
+        .then(response => response.text())
+        .then(content => {
+          const hasNewFeatures = 
+            content.includes('water_appearance') &&
+            content.includes('pollution_sources') &&
+            content.includes('data_reliability');
+          
+          if (hasNewFeatures) {
+            status.textContent = '✅ PASS - Latest code detected';
+            status.style.color = '#27ae60';
+            section.classList.add('success');
+            details.innerHTML = '<p>✓ app.js contains new feature code</p>';
+          } else {
+            status.textContent = '❌ FAIL - Old code detected';
+            status.style.color = '#e74c3c';
+            section.classList.add('error');
+            details.innerHTML = '<p>⚠️ app.js missing new features. Check implementation!</p>';
+          }
+        })
+        .catch(err => {
+          status.textContent = '⚠️ WARNING - Cannot verify';
+          status.style.color = '#f39c12';
+          details.innerHTML = '<p>ℹ️ Open from main index.html to verify</p>';
+        });
     }
 
     // Test 2: HTML Elements
     function testHTML() {
-      const elements = [
-        'water-appearance',
-        'pollution-sources',
-        'data-reliability'
-      ];
-      
-      const missing = [];
-      elements.forEach(id => {
-        if (!document.getElementById(id)) {
-          missing.push(id);
-        }
-      });
+      // Check if we can load the HTML file
+      fetch('frontend/index.html')
+        .then(response => response.text())
+        .then(content => {
+          const elements = [
+            'id="water-appearance"',
+            'id="pollution-sources"',
+            'id="data-reliability"',
+            'id="alert-pollution-sources"',
+            'id="alert-data-reliability"'
+          ];
+          
+          const missing = [];
+          elements.forEach(id => {
+            if (!content.includes(id)) {
+              missing.push(id);
+            }
+          });
 
-      const status = document.getElementById('html-status');
-      const details = document.getElementById('html-details');
-      const section = document.getElementById('html-test');
-      
-      if (missing.length === 0) {
-        status.textContent = '✅ PASS - All elements found';
-        status.style.color = '#27ae60';
-        section.classList.add('success');
-        details.innerHTML = '<p>✓ All 3 new sections exist in HTML</p>';
-      } else {
-        status.textContent = '❌ FAIL - Missing elements';
-        status.style.color = '#e74c3c';
-        section.classList.add('error');
-        details.innerHTML = `<p>⚠️ Missing: ${missing.join(', ')}</p>`;
-      }
+          const status = document.getElementById('html-status');
+          const details = document.getElementById('html-details');
+          const section = document.getElementById('html-test');
+          
+          if (missing.length === 0) {
+            status.textContent = '✅ PASS - All elements found';
+            status.style.color = '#27ae60';
+            section.classList.add('success');
+            details.innerHTML = `
+              <p>✓ All 5 new sections exist in HTML:</p>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                <li>✓ water-appearance (Analysis tab)</li>
+                <li>✓ pollution-sources (Analysis tab)</li>
+                <li>✓ data-reliability (Analysis tab)</li>
+                <li>✓ alert-pollution-sources (Alerts tab)</li>
+                <li>✓ alert-data-reliability (Alerts tab)</li>
+              </ul>
+            `;
+          } else {
+            status.textContent = '❌ FAIL - Missing elements';
+            status.style.color = '#e74c3c';
+            section.classList.add('error');
+            details.innerHTML = `<p>⚠️ Missing: ${missing.join(', ')}</p>`;
+          }
+        })
+        .catch(err => {
+          const status = document.getElementById('html-status');
+          const details = document.getElementById('html-details');
+          status.textContent = '⚠️ WARNING - Cannot verify';
+          status.style.color = '#f39c12';
+          details.innerHTML = '<p>ℹ️ Open from main index.html to verify</p>';
+        });
     }
 
     // Test 3: JavaScript Functions
     function testJS() {
-      // Check if app.js is loaded by looking for specific functions
-      const hasEscHtml = typeof window.escHtml !== 'undefined' || 
-                         document.querySelector('script[src*="app.js"]') !== null;
-      
-      const status = document.getElementById('js-status');
-      const details = document.getElementById('js-details');
-      const section = document.getElementById('js-test');
-      
-      if (hasEscHtml) {
-        status.textContent = '✅ PASS - JavaScript loaded';
-        status.style.color = '#27ae60';
-        section.classList.add('success');
-        details.innerHTML = '<p>✓ app.js is loaded and ready</p>';
-      } else {
-        status.textContent = '⚠️ PARTIAL - Check main page';
-        status.style.color = '#f39c12';
-        details.innerHTML = '<p>ℹ️ JavaScript functions only available on main page</p>';
-      }
+      fetch('frontend/app.js')
+        .then(response => response.text())
+        .then(content => {
+          const checks = {
+            'Water Appearance Rendering': content.includes('if (data.water_appearance)'),
+            'Pollution Sources Rendering': content.includes('if (data.pollution_sources)'),
+            'Data Reliability Rendering': content.includes('if (data.data_reliability)'),
+            'Alert Pollution Sources': content.includes('alert-pollution-sources'),
+            'Alert Data Reliability': content.includes('alert-data-reliability'),
+            'Demo Data Updated': content.includes('pollution_sources:a.pollution_sources')
+          };
+          
+          const passed = Object.values(checks).filter(v => v).length;
+          const total = Object.keys(checks).length;
+          
+          const status = document.getElementById('js-status');
+          const details = document.getElementById('js-details');
+          const section = document.getElementById('js-test');
+          
+          if (passed === total) {
+            status.textContent = `✅ PASS - All functions present (${passed}/${total})`;
+            status.style.color = '#27ae60';
+            section.classList.add('success');
+            details.innerHTML = `
+              <p>✓ All rendering functions implemented:</p>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                ${Object.entries(checks).map(([name, pass]) => 
+                  `<li>${pass ? '✓' : '✗'} ${name}</li>`
+                ).join('')}
+              </ul>
+            `;
+          } else {
+            status.textContent = `⚠️ PARTIAL - ${passed}/${total} checks passed`;
+            status.style.color = '#f39c12';
+            details.innerHTML = `
+              <p>Some functions missing:</p>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                ${Object.entries(checks).map(([name, pass]) => 
+                  `<li>${pass ? '✓' : '✗'} ${name}</li>`
+                ).join('')}
+              </ul>
+            `;
+          }
+        })
+        .catch(err => {
+          const status = document.getElementById('js-status');
+          const details = document.getElementById('js-details');
+          status.textContent = '⚠️ WARNING - Cannot verify';
+          status.style.color = '#f39c12';
+          details.innerHTML = '<p>ℹ️ Open from main index.html to verify</p>';
+        });
     }
 
     // Test 4: Demo Data

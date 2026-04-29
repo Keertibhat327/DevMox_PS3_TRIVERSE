@@ -867,6 +867,8 @@ def alerts(
             "confidence":      conf,
             "triggered_alerts": triggered,
             "recommendations": recommendations,
+            "pollution_sources": result.get("pollution_sources"),
+            "data_reliability": result.get("data_reliability"),
             "timestamp":       utc_now_iso(),
         }
 
