@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AquaWatch — Satellite Water Quality Monitor</title>
+  <meta name="description" content="Real-time water quality monitoring using Sentinel-2 satellite imagery via Google Earth Engine." />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=8" />
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="header" role="banner">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">🛰️</span>
+      <span class="brand-name">AquaWatch</span>
+      <span class="brand-tagline">Satellite Water Quality Monitor</span>
+    </div>
+    <nav class="tab-nav" role="navigation" aria-label="Main navigation">
+      <button class="tab-btn active" data-tab="map"      aria-selected="true"  role="tab"><i class="fa-solid fa-map"></i> Map</button>
+      <button class="tab-btn"        data-tab="analysis" aria-selected="false" role="tab"><i class="fa-solid fa-chart-line"></i> Analysis</button>
+      <button class="tab-btn"        data-tab="compare"  aria-selected="false" role="tab"><i class="fa-solid fa-code-compare"></i> Compare</button>
+      <button class="tab-btn"        data-tab="alerts"   aria-selected="false" role="tab"><i class="fa-solid fa-bell"></i> Alerts <span id="alert-badge" class="badge hidden"></span></button>
+      <button class="tab-btn"        data-tab="about"    aria-selected="false" role="tab"><i class="fa-solid fa-circle-info"></i> About</button>
+    </nav>
+    <div class="header-status">
+      <span id="api-status-dot" class="status-dot"></span>
+      <span id="api-status-text" class="status-text">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════════════════════ -->
+<main class="main-content" role="main">
+
+  <!-- ── MAP TAB ─────────────────────────────────────────────────────────── -->
+  <section id="tab-map" class="tab-panel active" role="tabpanel">
+    <div class="map-layout">
+
+      <!-- Sidebar -->
+      <aside class="map-sidebar">
+
+        <!-- Location input -->
+        <div class="sidebar-section">
+          <h2 class="sidebar-title"><i class="fa-solid fa-crosshairs"></i> Select Location</h2>
+          <p class="sidebar-hint">Click the map or enter coordinates below.</p>
+          <div class="coord-inputs">
+            <label for="input-lat">Latitude</label>
+            <input id="input-lat" type="number" step="0.0001" placeholder="e.g. 28.6139" />
+            <label for="input-lng">Longitude</label>
+            <input id="input-lng" type="number" step="0.0001" placeholder="e.g. 77.2090" />
+          </div>
+          <button id="btn-analyze" class="btn btn-primary">
+            <i class="fa-solid fa-satellite-dish"></i> Analyze Location
+          </button>
+        </div>
+
+        <!-- Layer toggles -->
+        <div class="sidebar-section">
+          <h2 class="sidebar-title"><i class="fa-solid fa-layer-group"></i> Map Layers</h2>
+          <div class="layer-toggles">
+            <label class="toggle-label">
+              <input type="checkbox" id="layer-rgb" checked />
+              <span class="toggle-track"></span><span>True Colour (RGB)</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="layer-ndwi" checked />
+              <span class="toggle-track"></span><span>NDWI (Water Index)</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="layer-pollution" />
+              <span class="toggle-track"></span><span>Pollution Overlay</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Quick locations -->
+        <div class="sidebar-section">
+          <h2 class="sidebar-title"><i class="fa-solid fa-bookmark"></i> Quick Locations</h2>
+          <div class="quick-locations">
+            <button class="quick-loc-btn" data-lat="28.6139"  data-lng="77.2090"  data-name="Yamuna, Delhi">🇮🇳 Yamuna, Delhi</button>
+            <button class="quick-loc-btn" data-lat="22.5726"  data-lng="88.3639"  data-name="Hooghly, Kolkata">🇮🇳 Hooghly, Kolkata</button>
+            <button class="quick-loc-btn" data-lat="19.0760"  data-lng="72.8777"  data-name="Mithi River, Mumbai">🇮🇳 Mithi, Mumbai</button>
+            <button class="quick-loc-btn" data-lat="51.5074"  data-lng="-0.1278"  data-name="Thames, London">🇬🇧 Thames, London</button>
+            <button class="quick-loc-btn" data-lat="40.7128"  data-lng="-74.0060" data-name="Hudson, New York">🇺🇸 Hudson, New York</button>
+            <button class="quick-loc-btn" data-lat="30.0444"  data-lng="31.2357"  data-name="Nile, Cairo">🇪🇬 Nile, Cairo</button>
+            <button class="quick-loc-btn" data-lat="-33.8688" data-lng="151.2093" data-name="Parramatta, Sydney">🇦🇺 Parramatta, Sydney</button>
+            <button class="quick-loc-btn" data-lat="35.6762"  data-lng="139.6503" data-name="Tokyo Bay">🇯🇵 Tokyo Bay</button>
+            <button class="quick-loc-btn" data-lat="-23.5505" data-lng="-46.6333" data-name="Tietê, São Paulo">🇧🇷 Tietê, São Paulo</button>
+            <button class="quick-loc-btn" data-lat="31.2304"  data-lng="121.4737" data-name="Huangpu, Shanghai">🇨🇳 Huangpu, Shanghai</button>
+            <button class="quick-loc-btn" data-lat="48.8566"  data-lng="2.3522"   data-name="Seine, Paris">🇫🇷 Seine, Paris</button>
+            <button class="quick-loc-btn" data-lat="-3.4653"  data-lng="-62.2159" data-name="Amazon River">🌿 Amazon River</button>
+          </div>
+        </div>
+
+        <!-- Result card -->
+        <div id="result-card" class="result-card hidden">
+          <div class="result-header">
+            <div>
+              <span id="result-label" class="result-label"></span>
+              <div id="result-confidence" class="confidence-badge"></div>
+            </div>
+            <div class="result-score-wrap">
+              <span id="result-score-num" class="result-score-num"></span>
+              <span class="result-score-label">/100</span>
+            </div>
+          </div>
+
+          <!-- Score bar -->
+          <div class="score-bar-wrap">
+            <div class="score-bar-track">
+              <div id="score-bar-fill" class="score-bar-fill"></div>
+            </div>
+            <div class="score-bar-labels">
+              <span style="color:var(--safe)">Safe</span>
+              <span style="color:var(--moderate)">Moderate</span>
+              <span style="color:var(--polluted)">Polluted</span>
+            </div>
+          </div>
+
+          <!-- Indices -->
+          <div class="result-indices">
+            <div class="index-item">
+              <span class="index-name">NDWI</span>
+              <span id="val-ndwi" class="index-val">—</span>
+              <span class="index-desc">Water clarity</span>
+            </div>
+            <div class="index-item">
+              <span class="index-name">NDTI</span>
+              <span id="val-ndti" class="index-val">—</span>
+              <span class="index-desc">Turbidity</span>
+            </div>
+            <div class="index-item">
+              <span class="index-name">FAI</span>
+              <span id="val-fai" class="index-val">—</span>
+              <span class="index-desc">Algae</span>
+            </div>
+          </div>
+
+          <!-- Contribution bars -->
+          <div id="contribution-bars" class="contribution-bars"></div>
+
+          <!-- Factors -->
+          <div id="result-factors" class="result-factors"></div>
+
+          <!-- Water Appearance (NEW) -->
+          <div class="result-section">
+            <div class="section-header">
+              <i class="fa-solid fa-eye"></i>
+              <span class="section-title">Water Appearance</span>
+            </div>
+            <div id="water-appearance" class="water-appearance-content"></div>
+          </div>
+
+          <!-- Possible Pollution Sources (NEW) -->
+          <div class="result-section">
+            <div class="section-header">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <span class="section-title">Possible Pollution Sources</span>
+            </div>
+            <div id="pollution-sources" class="pollution-sources-content"></div>
+          </div>
+
+          <!-- Data Reliability (NEW) -->
+          <div class="result-section">
+            <div class="section-header">
+              <i class="fa-solid fa-chart-line"></i>
+              <span class="section-title">Data Reliability</span>
+            </div>
+            <div id="data-reliability" class="data-reliability-content"></div>
+          </div>
+
+          <!-- Meta -->
+          <div class="result-meta">
+            <span id="result-images" class="meta-item"></span>
+            <span id="result-dates"  class="meta-item"></span>
+            <span id="result-ts"     class="meta-item"></span>
+          </div>
+
+          <!-- Actions -->
+          <div class="result-actions">
+            <button id="btn-set-compare-a" class="btn btn-secondary btn-sm">
+              <i class="fa-solid fa-a"></i> Set as A
+            </button>
+            <button id="btn-set-compare-b" class="btn btn-secondary btn-sm">
+              <i class="fa-solid fa-b"></i> Set as B
+            </button>
+            <button id="btn-export" class="btn btn-secondary btn-sm">
+              <i class="fa-solid fa-file-arrow-down"></i> Export
+            </button>
+          </div>
+
+          <!-- Disclaimer (MANDATORY) -->
+          <div class="result-disclaimer">
+            <i class="fa-solid fa-info-circle"></i>
+            <span>This system provides indicative analysis based on satellite-derived environmental indicators. It does not identify or confirm specific pollutants or responsible entities. Ground validation is recommended for regulatory or health decisions.</span>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div id="history-section" class="sidebar-section" style="display:none">
+          <h2 class="sidebar-title">
+            <i class="fa-solid fa-clock-rotate-left"></i> History
+            <button id="btn-clear-history" class="btn-icon-sm" title="Clear history">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </h2>
+          <div id="history-list" class="history-list"></div>
+        </div>
+
+      </aside>
+
+      <!-- Map -->
+      <div class="map-container">
+        <div id="map"></div>
+
+        <!-- Search bar -->
+        <div class="map-search-bar" role="search">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input id="search-input" type="search" class="search-input"
+              placeholder="Search river, lake, city…"
+              autocomplete="off" spellcheck="false"
+              aria-label="Search location" aria-autocomplete="list"
+              aria-controls="search-results" aria-expanded="false" />
+            <button id="search-clear" class="search-clear hidden" aria-label="Clear search">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="search-spinner" class="search-spinner hidden"></div>
+          </div>
+          <ul id="search-results" class="search-results hidden" role="listbox"></ul>
+        </div>
+
+        <!-- Loading -->
+        <div id="map-loading" class="map-loading hidden" role="status">
+          <div class="spinner"></div>
+          <span>Fetching satellite data from GEE…</span>
+        </div>
+
+        <!-- Legend -->
+        <div class="map-legend">
+          <div class="legend-title">Water Quality</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#27ae60"></span>Safe (0–30)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#f39c12"></span>Moderate (30–60)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#e74c3c"></span>Polluted (60–100)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ANALYSIS TAB ─────────────────────────────────────────────────────── -->
+  <section id="tab-analysis" class="tab-panel" role="tabpanel">
+    <div class="analysis-layout">
+      <div class="analysis-header">
+        <h2><i class="fa-solid fa-chart-area"></i> Time-Series Analysis</h2>
+        <p>Historical water quality trends using Sentinel-2 monthly composites.</p>
+        <div class="analysis-controls">
+          <label for="months-select">History window:</label>
+          <select id="months-select">
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12" selected>12 months</option>
+            <option value="24">24 months</option>
+          </select>
+          <button id="btn-timeseries" class="btn btn-primary">
+            <i class="fa-solid fa-rotate"></i> Load Time-Series
+          </button>
+        </div>
+      </div>
+
+      <div id="analysis-loading" class="loading-overlay hidden" role="status">
+        <div class="spinner"></div>
+        <span>Computing time-series from satellite archive…</span>
+      </div>
+
+      <div id="analysis-content" class="analysis-content hidden">
+        <div class="summary-cards">
+          <div class="summary-card">
+            <div class="summary-icon">📈</div>
+            <div class="summary-label">Trend</div>
+            <div id="ts-trend" class="summary-value">—</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">📅</div>
+            <div class="summary-label">Data Points</div>
+            <div id="ts-points" class="summary-value">—</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">💧</div>
+            <div class="summary-label">Avg Score</div>
+            <div id="ts-avg-score" class="summary-value">—</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">🌊</div>
+            <div class="summary-label">Latest Status</div>
+            <div id="ts-latest-status" class="summary-value">—</div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>NDWI Over Time <span class="chart-hint">(higher = cleaner)</span></h3>
+            <div id="chart-ndwi" class="chart-container"></div>
+          </div>
+          <div class="chart-card">
+            <h3>Turbidity (NDTI) <span class="chart-hint">(lower = cleaner)</span></h3>
+            <div id="chart-ndti" class="chart-container"></div>
+          </div>
+          <div class="chart-card chart-card-wide">
+            <h3>Pollution Score Over Time</h3>
+            <div id="chart-score" class="chart-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="analysis-empty" class="empty-state">
+        <div class="empty-icon">🛰️</div>
+        <p>Select a location on the Map tab and click <strong>Load Time-Series</strong>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── COMPARE TAB ──────────────────────────────────────────────────────── -->
+  <section id="tab-compare" class="tab-panel" role="tabpanel">
+    <div class="compare-layout">
+
+      <!-- Header -->
+      <div class="compare-header">
+        <h2><i class="fa-solid fa-code-compare"></i> Compare Locations</h2>
+        <p>Analyse two water bodies side by side. Set Location A and B from the Map tab after analyzing, or enter coordinates manually below.</p>
+      </div>
+
+      <!-- Input cards -->
+      <div class="cmp-input-grid">
+
+        <div class="cmp-input-card">
+          <div class="cmp-input-card-header">
+            <span class="loc-badge loc-a">A</span>
+            <span class="cmp-input-card-title">Location A</span>
+          </div>
+          
+          <!-- Search bar for Location A -->
+          <div class="cmp-search-wrap">
+            <div class="search-input-wrap">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input id="cmp-search-a" type="search" class="search-input"
+                placeholder="Search location…"
+                autocomplete="off" spellcheck="false"
+                aria-label="Search location A" />
+              <button id="cmp-search-clear-a" class="search-clear hidden" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <div id="cmp-search-spinner-a" class="search-spinner hidden"></div>
+            </div>
+            <ul id="cmp-search-results-a" class="search-results hidden" role="listbox"></ul>
+          </div>
+
+          <div class="cmp-field-row">
+            <div class="cmp-field">
+              <label class="cmp-field-label" for="cmp-lat-a">Latitude</label>
+              <input id="cmp-lat-a" class="cmp-field-input" type="number" step="0.0001" placeholder="e.g. 28.6139" />
+            </div>
+            <div class="cmp-field">
+              <label class="cmp-field-label" for="cmp-lng-a">Longitude</label>
+              <input id="cmp-lng-a" class="cmp-field-input" type="number" step="0.0001" placeholder="e.g. 77.2090" />
+            </div>
+          </div>
+          <div id="cmp-name-a" class="cmp-set-name"></div>
+        </div>
+
+        <div class="cmp-vs-col">
+          <div class="cmp-vs-badge">VS</div>
+        </div>
+
+        <div class="cmp-input-card">
+          <div class="cmp-input-card-header">
+            <span class="loc-badge loc-b">B</span>
+            <span class="cmp-input-card-title">Location B</span>
+          </div>
+          
+          <!-- Search bar for Location B -->
+          <div class="cmp-search-wrap">
+            <div class="search-input-wrap">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input id="cmp-search-b" type="search" class="search-input"
+                placeholder="Search location…"
+                autocomplete="off" spellcheck="false"
+                aria-label="Search location B" />
+              <button id="cmp-search-clear-b" class="search-clear hidden" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <div id="cmp-search-spinner-b" class="search-spinner hidden"></div>
+            </div>
+            <ul id="cmp-search-results-b" class="search-results hidden" role="listbox"></ul>
+          </div>
+
+          <div class="cmp-field-row">
+            <div class="cmp-field">
+              <label class="cmp-field-label" for="cmp-lat-b">Latitude</label>
+              <input id="cmp-lat-b" class="cmp-field-input" type="number" step="0.0001" placeholder="e.g. 51.5074" />
+            </div>
+            <div class="cmp-field">
+              <label class="cmp-field-label" for="cmp-lng-b">Longitude</label>
+              <input id="cmp-lng-b" class="cmp-field-input" type="number" step="0.0001" placeholder="e.g. -0.1278" />
+            </div>
+          </div>
+          <div id="cmp-name-b" class="cmp-set-name"></div>
+        </div>
+
+      </div>
+
+      <!-- Run button -->
+      <div class="cmp-run-row">
+        <button id="btn-run-compare" class="btn btn-primary cmp-run-btn">
+          <i class="fa-solid fa-satellite-dish"></i> Run Comparison
+        </button>
+      </div>
+
+      <!-- Loading -->
+      <div id="compare-loading" class="loading-overlay hidden" role="status">
+        <div class="spinner"></div>
+        <span>Fetching satellite data for both locations…</span>
+      </div>
+
+      <!-- Results -->
+      <div id="compare-results" class="compare-results hidden">
+
+        <!-- Side-by-side maps -->
+        <div class="cmp-maps-section">
+          <h3 class="cmp-section-title"><i class="fa-solid fa-map-location-dot"></i> Location Maps</h3>
+          <div class="cmp-maps-grid">
+            <div class="cmp-map-card">
+              <div class="cmp-map-header">
+                <span class="loc-badge loc-a">A</span>
+                <span id="cmp-map-name-a" class="cmp-map-name">Location A</span>
+                <button id="cmp-map-maximize-a" class="btn-icon-sm" title="Maximize map">
+                  <i class="fa-solid fa-expand"></i>
+                </button>
+              </div>
+              <div id="cmp-map-a" class="cmp-map"></div>
+            </div>
+            <div class="cmp-map-card">
+              <div class="cmp-map-header">
+                <span class="loc-badge loc-b">B</span>
+                <span id="cmp-map-name-b" class="cmp-map-name">Location B</span>
+                <button id="cmp-map-maximize-b" class="btn-icon-sm" title="Maximize map">
+                  <i class="fa-solid fa-expand"></i>
+                </button>
+              </div>
+              <div id="cmp-map-b" class="cmp-map"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Score cards -->
+        <div class="cmp-score-grid">
+          <div class="cmp-score-card" id="cmp-card-a">
+            <div class="cmp-score-card-top">
+              <span class="loc-badge loc-a">A</span>
+              <span id="cmp-card-name-a" class="cmp-score-card-name"></span>
+            </div>
+            <div id="cmp-score-a" class="cmp-score-number"></div>
+            <div class="cmp-score-unit">/100</div>
+            <div id="cmp-label-a"></div>
+            <div id="cmp-conf-a" class="cmp-conf-text"></div>
+          </div>
+
+          <div class="cmp-vs-result" id="cmp-winner-badge"></div>
+
+          <div class="cmp-score-card" id="cmp-card-b">
+            <div class="cmp-score-card-top">
+              <span class="loc-badge loc-b">B</span>
+              <span id="cmp-card-name-b" class="cmp-score-card-name"></span>
+            </div>
+            <div id="cmp-score-b" class="cmp-score-number"></div>
+            <div class="cmp-score-unit">/100</div>
+            <div id="cmp-label-b"></div>
+            <div id="cmp-conf-b" class="cmp-conf-text"></div>
+          </div>
+        </div>
+
+        <!-- Metrics table -->
+        <div class="cmp-table-card">
+          <div class="cmp-table-header">
+            <i class="fa-solid fa-table-cells"></i> Detailed Metrics
+          </div>
+          <div class="cmp-table-scroll">
+            <table class="cmp-table">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th><span class="loc-badge loc-a">A</span> <span id="th-name-a"></span></th>
+                  <th><span class="loc-badge loc-b">B</span> <span id="th-name-b"></span></th>
+                  <th>Δ Difference</th>
+                </tr>
+              </thead>
+              <tbody id="compare-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="cmp-charts-grid">
+          <div class="chart-card">
+            <h3>Pollution Score</h3>
+            <div id="cmp-chart-score" class="chart-container"></div>
+          </div>
+          <div class="chart-card">
+            <h3>Index Radar <span class="chart-hint">(higher = better quality)</span></h3>
+            <div id="cmp-chart-radar" class="chart-container"></div>
+          </div>
+        </div>
+
+        <!-- Insights -->
+        <div class="cmp-insights-card">
+          <div class="cmp-insights-header">
+            <i class="fa-solid fa-lightbulb"></i> Analysis Insights
+          </div>
+          <ul id="insights-list" class="cmp-insights-list"></ul>
+        </div>
+
+      </div>
+
+      <!-- Empty state -->
+      <div id="compare-empty" class="empty-state">
+        <div class="empty-icon">🔬</div>
+        <p>Enter coordinates for two locations and click <strong>Run Comparison</strong>.<br>
+        Or use <strong>Set as A / Set as B</strong> on the Map tab after analyzing a location.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── ALERTS TAB ───────────────────────────────────────────────────────── -->
+  <section id="tab-alerts" class="tab-panel" role="tabpanel">
+    <div class="alerts-layout">
+      <div class="alerts-header">
+        <h2><i class="fa-solid fa-triangle-exclamation"></i> Pollution Alerts</h2>
+        <p>Real-time alert assessment for the selected location.</p>
+        <button id="btn-check-alerts" class="btn btn-primary">
+          <i class="fa-solid fa-bell"></i> Check Alerts
+        </button>
+      </div>
+
+      <div id="alerts-loading" class="loading-overlay hidden" role="status">
+        <div class="spinner"></div>
+        <span>Checking pollution levels…</span>
+      </div>
+
+      <div id="alert-banner" class="alert-banner hidden" role="alert"></div>
+
+      <div id="alerts-content" class="alerts-content hidden">
+
+        <!-- Triggered alerts -->
+        <div id="triggered-alerts-section" class="triggered-alerts-section hidden">
+          <h3 class="section-subtitle"><i class="fa-solid fa-circle-exclamation"></i> Triggered Alerts</h3>
+          <div id="triggered-alerts-list" class="triggered-alerts-list"></div>
+        </div>
+
+        <div class="alert-detail-grid">
+          <div class="alert-detail-card">
+            <h3>Current Status</h3>
+            <div id="alert-status-display" class="alert-status-display"></div>
+          </div>
+          <div class="alert-detail-card">
+            <h3>Contributing Factors</h3>
+            <ul id="alert-factors-list" class="alert-factors-list"></ul>
+          </div>
+          <div class="alert-detail-card alert-detail-card-wide">
+            <h3>Recommendations</h3>
+            <ul id="alert-recommendations" class="alert-recommendations"></ul>
+          </div>
+        </div>
+
+        <div class="alert-indices-row">
+          <div class="alert-index-card">
+            <div class="ai-label">NDWI</div>
+            <div id="alert-ndwi" class="ai-value">—</div>
+            <div class="ai-desc">Water Clarity</div>
+          </div>
+          <div class="alert-index-card">
+            <div class="ai-label">NDTI</div>
+            <div id="alert-ndti" class="ai-value">—</div>
+            <div class="ai-desc">Turbidity</div>
+          </div>
+          <div class="alert-index-card">
+            <div class="ai-label">FAI</div>
+            <div id="alert-fai" class="ai-value">—</div>
+            <div class="ai-desc">Algae Index</div>
+          </div>
+          <div class="alert-index-card">
+            <div class="ai-label">Score</div>
+            <div id="alert-score-val" class="ai-value">—</div>
+            <div class="ai-desc">Pollution Score</div>
+          </div>
+          <div class="alert-index-card">
+            <div class="ai-label">Confidence</div>
+            <div id="alert-confidence" class="ai-value">—</div>
+            <div class="ai-desc">Data Quality</div>
+          </div>
+        </div>
+
+        <p id="alert-timestamp" class="alert-timestamp"></p>
+      </div>
+
+      <div id="alerts-empty" class="empty-state">
+        <div class="empty-icon">🔔</div>
+        <p>Select a location on the Map tab and click <strong>Check Alerts</strong>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ABOUT TAB ────────────────────────────────────────────────────────── -->
+  <section id="tab-about" class="tab-panel" role="tabpanel">
+    <div class="about-layout">
+      <div class="about-hero">
+        <div class="about-hero-icon">🛰️</div>
+        <h1>AquaWatch</h1>
+        <p class="about-subtitle">Satellite-powered water quality monitoring for a healthier planet.</p>
+      </div>
+
+      <div class="about-grid">
+        <div class="about-card">
+          <h3><i class="fa-solid fa-satellite"></i> Data Source</h3>
+          <p>Uses <strong>Sentinel-2 MSI L2A</strong> imagery (10 m resolution) from ESA/Copernicus, processed via <strong>Google Earth Engine</strong>. Global coverage, 5-day revisit cycle.</p>
+        </div>
+        <div class="about-card">
+          <h3><i class="fa-solid fa-flask"></i> Spectral Indices</h3>
+          <ul>
+            <li><strong>NDWI</strong> — Normalised Difference Water Index: water presence and clarity.</li>
+            <li><strong>NDTI</strong> — Normalised Difference Turbidity Index: suspended sediment and turbidity.</li>
+            <li><strong>FAI</strong> — Floating Algae Index: algal blooms and surface scum.</li>
+          </ul>
+        </div>
+        <div class="about-card">
+          <h3><i class="fa-solid fa-calculator"></i> Scoring Model</h3>
+          <p>Weighted formula combining all three indices:</p>
+          <div class="formula-box">
+            Score = 0.45 × NDTI + 0.35 × FAI + 0.20 × (1 − NDWI)
+          </div>
+          <p style="margin-top:0.5rem;font-size:0.8rem;color:var(--text-muted)">All indices normalised to [0,1] before weighting.</p>
+        </div>
+        <div class="about-card">
+          <h3><i class="fa-solid fa-shield-halved"></i> Classification</h3>
+          <div class="classification-table">
+            <div class="ct-row ct-header"><span>Score</span><span>Status</span><span>Meaning</span></div>
+            <div class="ct-row"><span>0–30</span><span class="badge-safe">Safe</span><span>Clean water</span></div>
+            <div class="ct-row"><span>30–60</span><span class="badge-moderate">Moderate</span><span>Elevated concern</span></div>
+            <div class="ct-row"><span>60–100</span><span class="badge-polluted">Polluted</span><span>High pollution risk</span></div>
+          </div>
+        </div>
+        <div class="about-card">
+          <h3><i class="fa-solid fa-gauge-high"></i> Confidence Levels</h3>
+          <ul>
+            <li><strong>High</strong> — ≥5 images, &lt;10% cloud cover, clear signal</li>
+            <li><strong>Medium</strong> — 2–4 images or moderate cloud cover</li>
+            <li><strong>Low</strong> — &lt;2 images or high cloud cover, noisy data</li>
+          </ul>
+        </div>
+        <div class="about-card about-card-wide">
+          <h3><i class="fa-solid fa-triangle-exclamation"></i> Disclaimer</h3>
+          <p>AquaWatch provides <strong>indicative</strong> water quality assessments based on optical remote sensing indices. It cannot detect heavy metals, bacteria, or exact chemical pollutants. Results should be validated with in-situ measurements before making public health or regulatory decisions. Cloud cover, atmospheric conditions, and seasonal variation can affect accuracy.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══ TOASTS ════════════════════════════════════════════════════════════════ -->
+<div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ═══ SCRIPTS ═══════════════════════════════════════════════════════════════ -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="app.js?v=8"></script>
+</body>
+</html>
